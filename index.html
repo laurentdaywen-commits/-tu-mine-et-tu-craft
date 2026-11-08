@@ -43,7 +43,7 @@
     const errorBox = document.querySelector('#error');
     function showGameError(error) {
       errorBox.hidden = false;
-      errorBox.textContent = 'ERREUR DU JEU 3D\\n' + (error && (error.stack || error.message) ? (error.stack || error.message) : String(error)) + '\\n\\nVérifie ta connexion Internet puis recharge la page.';
+      errorBox.textContent = ['ERREUR DU JEU 3D', (error && (error.stack || error.message) ? (error.stack || error.message) : String(error)), 'Vérifie ta connexion Internet puis recharge la page.'].join(String.fromCharCode(10) + String.fromCharCode(10));
       console.error(error);
     }
     addEventListener('error', event => showGameError(event.error || event.message));
