@@ -49,7 +49,12 @@ const chunkOf = (x, z) => [Math.floor(x / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE
 const chunkKey = (cx, cz) => cx + ',' + cz;
 
 function heightAt(x, z) {
-  return Math.floor(2 + Math.sin(x * 0.23) * 1.2 + Math.cos(z * 0.19) * 1.1 + Math.sin((x + z) * 0.13) * 0.7);
+  // Relief en plusieurs échelles : grandes collines, crêtes et petites ondulations.
+  const broad = Math.sin(x * 0.105) * 2.6 + Math.cos(z * 0.09) * 2.2;
+  const hills = Math.sin((x + z) * 0.065) * 1.8 + Math.cos((x - z) * 0.055) * 1.4;
+  const ridge = Math.pow(Math.max(0, Math.sin(x * 0.045 + z * 0.035)), 2) * 4.5;
+  const detail = Math.sin(x * 0.31 + z * 0.17) * 0.45 + Math.cos(z * 0.27 - x * 0.12) * 0.35;
+  return THREE.MathUtils.clamp(Math.floor(4 + broad + hills + ridge + detail), 1, 14);
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
@@ -137,15 +142,23 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
     const h = heightAt(x, z);
     for (let y = 0; y <= h; y++) {
-      setBlockData(x, y, z, y === h ? 'grass' : y >= h - 2 ? 'dirt' : 'stone');
+      setBlockData(x, y, z, y === h ? (h >= 10 ? 'stone' : 'grass') : y >= h - 2 ? 'dirt' : 'stone');
     }
   }
 }
-// Arbres déterministes répartis dans le monde.
-for (let tx = -28; tx <= 28; tx += 9) {
-  for (let tz = -28; tz <= 28; tz += 11) {
-    if ((Math.abs(tx * 3 + tz * 5) % 4) === 0) continue;
+// Forêts déterministes, plus naturelles et adaptées aux pentes.
+for (let tx = -27; tx <= 27; tx += 6) {
+  for (let tz = -27; tz <= 27; tz += 7) {
+    const treeRoll = Math.abs(Math.sin(tx * 127.1 + tz * 311.7) * 43758.5453) % 1;
+    if (treeRoll > 0.34) continue;
     const base = heightAt(tx, tz);
+    const slope = Math.max(
+      Math.abs(base - heightAt(tx + 1, tz)),
+      Math.abs(base - heightAt(tx - 1, tz)),
+      Math.abs(base - heightAt(tx, tz + 1)),
+      Math.abs(base - heightAt(tx, tz - 1))
+    );
+    if (base >= 9 || slope > 2) continue;
     for (let y = 1; y <= 3; y++) setBlockData(tx, base + y, tz, 'wood');
     for (let ox = -2; ox <= 2; ox++) {
       for (let oz = -2; oz <= 2; oz++) {
