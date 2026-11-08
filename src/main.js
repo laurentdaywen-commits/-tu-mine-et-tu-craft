@@ -95,7 +95,24 @@ function rebuildChunk(cx, cz) {
 }
 function rebuildAt(x, z) {
   const [cx, cz] = chunkOf(x, z);
-  rebuildChunk(cx, cz);
+  // Ne reconstruire que les chunks actuellement chargés à l'écran.
+  if (chunks.has(chunkKey(cx, cz))) rebuildChunk(cx, cz);
+}
+function refreshChunksAroundPlayer() {
+  const [playerChunkX, playerChunkZ] = chunkOf(camera.position.x, camera.position.z);
+  const wanted = new Set();
+  for (let cx = Math.max(-4, playerChunkX - RENDER_DISTANCE); cx <= Math.min(3, playerChunkX + RENDER_DISTANCE); cx++) {
+    for (let cz = Math.max(-4, playerChunkZ - RENDER_DISTANCE); cz <= Math.min(3, playerChunkZ + RENDER_DISTANCE); cz++) {
+      const id = chunkKey(cx, cz);
+      wanted.add(id);
+      if (!chunks.has(id)) rebuildChunk(cx, cz);
+    }
+  }
+  for (const [id, meshes] of chunks) {
+    if (wanted.has(id)) continue;
+    for (const mesh of meshes) scene.remove(mesh);
+    chunks.delete(id);
+  }
 }
 function addBlock(x, y, z, type) {
   if (y < 0 || y > 24 || x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX) return false;
@@ -138,13 +155,10 @@ for (let tx = -28; tx <= 28; tx += 9) {
     }
   }
 }
-// Création des chunks une seule fois au démarrage.
-for (let cx = -4; cx <= 3; cx++) {
-  for (let cz = -4; cz <= 3; cz++) rebuildChunk(cx, cz);
-}
-
+// Chargement initial autour du point de départ (les autres chunks seront chargés à l'approche).
 const groundY = heightAt(0, 10) + 2.7;
 camera.position.set(0, groundY, 10);
+refreshChunksAroundPlayer();
 const raycaster = new THREE.Raycaster();
 raycaster.far = 7;
 let selected = 'grass';
@@ -264,6 +278,7 @@ lookZone.addEventListener('pointerup', () => { touchLook = null; });
 lookZone.addEventListener('pointercancel', () => { touchLook = null; });
 
 const clock = new THREE.Clock();
+let lastChunkId = '';
 function update(dt) {
   const forward = Number(keys.KeyW || keys.ArrowUp) - Number(keys.KeyS || keys.ArrowDown) - joystick.y;
   const side = Number(keys.KeyD || keys.ArrowRight) - Number(keys.KeyA || keys.ArrowLeft) + joystick.x;
@@ -276,6 +291,12 @@ function update(dt) {
   camera.position.addScaledVector(right, side * 5.5 * dt);
   camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
   camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
+  const [chunkX, chunkZ] = chunkOf(camera.position.x, camera.position.z);
+  const currentChunkId = chunkKey(chunkX, chunkZ);
+  if (currentChunkId !== lastChunkId) {
+    lastChunkId = currentChunkId;
+    refreshChunksAroundPlayer();
+  }
 
   if (keys.Space && onGround) verticalVelocity = 7;
   verticalVelocity -= 19 * dt;
