@@ -163,7 +163,7 @@ const groundY = heightAt(0, 10) + 2.7;
 camera.position.set(0, groundY, 10);
 // Oriente légèrement la vue vers le terrain pour rendre le monde visible dès le démarrage.
 camera.rotation.order = 'YXZ';
-camera.rotation.x = -0.22;
+camera.rotation.x = 0.42;
 refreshChunksAroundPlayer();
 const raycaster = new THREE.Raycaster();
 raycaster.far = 7;
