@@ -295,8 +295,8 @@ lookZone.addEventListener('pointercancel', () => { touchLook = null; });
 const clock = new THREE.Clock();
 let lastChunkId = '';
 function update(dt) {
-  const forward = Number(keys.KeyW || keys.ArrowUp) - Number(keys.KeyS || keys.ArrowDown) - joystick.y;
-  const side = Number(keys.KeyD || keys.ArrowRight) - Number(keys.KeyA || keys.ArrowLeft) + joystick.x;
+  const forward = Number(Boolean(keys.KeyW || keys.ArrowUp)) - Number(Boolean(keys.KeyS || keys.ArrowDown)) - joystick.y;
+  const side = Number(Boolean(keys.KeyD || keys.ArrowRight)) - Number(Boolean(keys.KeyA || keys.ArrowLeft)) + joystick.x;
   const direction = new THREE.Vector3();
   camera.getWorldDirection(direction);
   direction.y = 0;
