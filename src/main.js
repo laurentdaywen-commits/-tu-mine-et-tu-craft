@@ -88,6 +88,9 @@ function rebuildChunk(cx, cz) {
       mesh.setMatrixAt(i, dummy.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
+    // Recalcule les limites des instances pour que le moteur les affiche correctement.
+    mesh.computeBoundingBox();
+    mesh.computeBoundingSphere();
     scene.add(mesh);
     meshes.push(mesh);
   }
@@ -266,11 +269,13 @@ joy.addEventListener('pointercancel', resetJoy);
 
 const lookZone = document.querySelector('#look-zone');
 lookZone.addEventListener('pointerdown', event => {
+  event.preventDefault();
   touchLook = { x: event.clientX, y: event.clientY, id: event.pointerId };
   lookZone.setPointerCapture(event.pointerId);
 });
 lookZone.addEventListener('pointermove', event => {
   if (!touchLook || touchLook.id !== event.pointerId) return;
+  event.preventDefault();
   const dx = event.clientX - touchLook.x, dy = event.clientY - touchLook.y;
   camera.rotation.order = 'YXZ';
   camera.rotation.y -= dx * 0.004;
