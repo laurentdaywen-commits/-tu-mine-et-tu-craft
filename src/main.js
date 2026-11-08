@@ -88,7 +88,8 @@ function rebuildChunk(cx, cz) {
       mesh.setMatrixAt(i, dummy.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
-    // Recalcule les limites des instances pour que le moteur les affiche correctement.
+    // Sur mobile, désactive le rejet par caméra pour éviter qu'un volume d'instances incorrect masque le monde.
+    mesh.frustumCulled = false;
     mesh.computeBoundingBox();
     mesh.computeBoundingSphere();
     scene.add(mesh);
@@ -332,6 +333,9 @@ addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 });
 document.querySelector('#loading').classList.add('done');
+const debugStatus = document.querySelector('#debug-status');
+debugStatus.hidden = false;
+debugStatus.textContent = 'Moteur 3D actif · ' + blocks.size.toLocaleString('fr-FR') + ' blocs · ' + chunks.size + ' zones';
 document.querySelector('#hint').textContent = isMobile
   ? 'Joystick : bouger · Glisse à droite : regarder · ⛏ miner · ＋ placer'
   : 'Clique dans le monde pour jouer · WASD pour bouger · Espace pour sauter';
