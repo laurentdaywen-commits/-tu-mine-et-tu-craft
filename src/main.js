@@ -6,7 +6,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 const CHUNK_SIZE = 8;
 const WORLD_MIN = -32;
 const WORLD_MAX = 31;
-const RENDER_DISTANCE = 4;
+const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87c8f0);
