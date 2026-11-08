@@ -36,7 +36,7 @@
         <button id="place">＋</button>
       </div>
     </div>
-    <div id="debug-status" hidden></div>
+    <div id="debug-status">Diagnostic : chargement du moteur 3D…</div>
     <div id="loading">Génération du monde…</div>
     <div id="error" hidden></div>
   </div>
@@ -49,7 +49,7 @@
     }
     addEventListener('error', event => showGameError(event.error || event.message));
     addEventListener('unhandledrejection', event => showGameError(event.reason));
-    import('./src/main.js').catch(showGameError);
+    import('./src/main.js?v=20261108-1605').catch(showGameError);
   </script>
 </body>
 </html>
