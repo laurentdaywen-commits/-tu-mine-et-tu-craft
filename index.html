@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#79bce8">
+  <title>Tu mine et tu craft</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="game">
+    <div id="sky-label">TU MINE ET TU CRAFT</div>
+    <div id="crosshair">+</div>
+    <div id="hint">Clique dans le monde pour jouer · WASD pour bouger · Espace pour sauter</div>
+    <div id="toolbar" aria-label="Barre de blocs">
+      <button class="slot selected" data-block="grass" title="Herbe">🟩<small>1</small></button>
+      <button class="slot" data-block="dirt" title="Terre">🟫<small>2</small></button>
+      <button class="slot" data-block="stone" title="Pierre">⬜<small>3</small></button>
+      <button class="slot" data-block="wood" title="Bois">🪵<small>4</small></button>
+      <button class="slot" data-block="leaves" title="Feuilles">🌿<small>5</small></button>
+    </div>
+    <div id="mobile-controls">
+      <div id="joystick"><div id="stick"></div></div>
+      <div id="look-zone"></div>
+      <div id="mobile-actions">
+        <button id="jump">↑</button>
+        <button id="break">⛏</button>
+        <button id="place">＋</button>
+      </div>
+    </div>
+    <div id="loading">Génération du monde…</div>
+    <div id="error" hidden></div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
