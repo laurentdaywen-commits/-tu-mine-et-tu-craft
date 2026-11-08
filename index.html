@@ -39,6 +39,16 @@
     <div id="loading">Génération du monde…</div>
     <div id="error" hidden></div>
   </div>
-  <script type="module" src="./src/main.js"></script>
+  <script type="module">
+    const errorBox = document.querySelector('#error');
+    function showGameError(error) {
+      errorBox.hidden = false;
+      errorBox.textContent = 'ERREUR DU JEU 3D\\n' + (error && (error.stack || error.message) ? (error.stack || error.message) : String(error)) + '\\n\\nVérifie ta connexion Internet puis recharge la page.';
+      console.error(error);
+    }
+    addEventListener('error', event => showGameError(event.error || event.message));
+    addEventListener('unhandledrejection', event => showGameError(event.reason));
+    import('./src/main.js').catch(showGameError);
+  </script>
 </body>
 </html>
