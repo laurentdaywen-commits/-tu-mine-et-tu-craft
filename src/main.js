@@ -165,7 +165,13 @@ camera.position.set(0, groundY, 10);
 // Oriente légèrement la vue vers le terrain pour rendre le monde visible dès le démarrage.
 camera.rotation.order = 'YXZ';
 camera.rotation.x = -0.65;
-refreshChunksAroundPlayer();
+// Construction explicite des 64 chunks au démarrage : évite un monde vide si
+// le calcul de proximité ne s'initialise pas correctement sur certains mobiles.
+for (let initialCx = -4; initialCx <= 3; initialCx++) {
+  for (let initialCz = -4; initialCz <= 3; initialCz++) {
+    rebuildChunk(initialCx, initialCz);
+  }
+}
 const raycaster = new THREE.Raycaster();
 raycaster.far = 7;
 let selected = 'grass';
@@ -335,7 +341,7 @@ addEventListener('resize', () => {
 document.querySelector('#loading').classList.add('done');
 const debugStatus = document.querySelector('#debug-status');
 debugStatus.hidden = false;
-debugStatus.textContent = 'Moteur 3D actif · ' + blocks.size.toLocaleString('fr-FR') + ' blocs · ' + chunks.size + ' zones';
+debugStatus.textContent = 'Moteur 3D actif · ' + blocks.size.toLocaleString('fr-FR') + ' blocs · ' + chunks.size + ' zones · ' + [...chunks.values()].reduce((total, meshes) => total + meshes.length, 0) + ' groupes 3D';
 document.querySelector('#hint').textContent = isMobile
   ? 'Joystick : bouger · Glisse à droite : regarder · ⛏ miner · ＋ placer'
   : 'Clique dans le monde pour jouer · WASD pour bouger · Espace pour sauter';
