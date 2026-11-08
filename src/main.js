@@ -276,8 +276,10 @@ function moveJoy(event) {
   const dy = event.clientY - (rect.top + rect.height / 2);
   const length = Math.min(42, Math.hypot(dx, dy));
   const angle = Math.atan2(dy, dx);
-  joystick.x = Math.cos(angle) * length / 42;
-  joystick.y = Math.sin(angle) * length / 42;
+  // Réponse plus douce du joystick mobile : 60 % de l'amplitude maximale.
+  const sensitivity = 0.6;
+  joystick.x = Math.cos(angle) * length / 42 * sensitivity;
+  joystick.y = Math.sin(angle) * length / 42 * sensitivity;
   stick.style.transform = 'translate(' + joystick.x * 42 + 'px,' + joystick.y * 42 + 'px)';
 }
 function resetJoy() {
