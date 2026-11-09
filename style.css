@@ -26,7 +26,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   #toolbar { bottom: 12px; }
   .slot { width: 45px; height: 45px; font-size: 20px; }
 }
-@media (max-width: 420px) { #toolbar { gap: 2px; padding: 4px; } .slot { width: 39px; height: 43px; } }
+@media (max-width: 420px) { #toolbar { gap: 1px; padding: 3px; } .slot { width: 33px; height: 39px; font-size: 17px; } }
 
 /* Disposition dédiée aux téléphones en mode paysage. */
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
