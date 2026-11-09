@@ -26,6 +26,10 @@
       <button class="slot" data-block="stone" title="Pierre">⬜<small>3</small></button>
       <button class="slot" data-block="wood" title="Bois">🪵<small>4</small></button>
       <button class="slot" data-block="leaves" title="Feuilles">🌿<small>5</small></button>
+      <button class="slot" data-block="coal" title="Minerai de charbon">⚫<small>6</small></button>
+      <button class="slot" data-block="iron" title="Minerai de fer">🩶<small>7</small></button>
+      <button class="slot" data-block="gold" title="Minerai d'or">🟨<small>8</small></button>
+      <button class="slot" data-block="diamond" title="Minerai de diamant">💎<small>9</small></button>
     </div>
     <div id="mobile-controls">
       <div id="joystick"><div id="stick"></div></div>
@@ -49,7 +53,7 @@
     }
     addEventListener('error', event => showGameError(event.error || event.message));
     addEventListener('unhandledrejection', event => showGameError(event.reason));
-    import('./src/main.js?v=voxel-physics-20261109').catch(showGameError);
+    import('./src/main.js?v=caves-ores-20261109').catch(showGameError);
   </script>
 </body>
 </html>
