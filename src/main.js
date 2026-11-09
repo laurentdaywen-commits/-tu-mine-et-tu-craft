@@ -33,16 +33,145 @@ scene.add(sun);
 
 const controls = new PointerLockControls(camera, renderer.domElement);
 const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+// Textures pixelisées inspirées du Minecraft classique, avec davantage de nuances.
+function makeBlockTexture(type, face) {
+  const size = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  let seed = (type.split('').reduce((n, c) => n + c.charCodeAt(0), 0) * 92821 + face * 7919) >>> 0;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const palettes = {
+    grass: ['#68a943', '#75b84b', '#568f38', '#83c653'],
+    grassSide: ['#865334', '#96613a', '#75462e', '#a16b40'],
+    dirt: ['#865334', '#96613a', '#75462e', '#a16b40'],
+    stone: ['#85898b', '#969a9b', '#74797b', '#a4a7a6'],
+    wood: ['#96612f', '#a87339', '#754823', '#b78042'],
+    leaves: ['#347d32', '#438f38', '#286b2b', '#58a344'],
+    coal: ['#85898b', '#30343a', '#202428', '#555b60'],
+    iron: ['#85898b', '#b8a99a', '#d1c2b2', '#786e67'],
+    gold: ['#85898b', '#e7bd35', '#f5d65b', '#a77b20'],
+    diamond: ['#85898b', '#35c9c5', '#8af4e9', '#168f9a']
+  };
+  const palette = palettes[type] || palettes.stone;
+  ctx.fillStyle = palette[0];
+  ctx.fillRect(0, 0, size, size);
+  // Bruit de couleur en petits pixels pour casser les aplats trop uniformes.
+  for (let i = 0; i < 250; i++) {
+    ctx.fillStyle = palette[1 + Math.floor(random() * (palette.length - 1))];
+    const w = random() > 0.86 ? 2 : 1;
+    const h = random() > 0.9 ? 2 : 1;
+    ctx.globalAlpha = 0.35 + random() * 0.45;
+    ctx.fillRect(Math.floor(random() * size), Math.floor(random() * size), w, h);
+  }
+  ctx.globalAlpha = 1;
+
+  if (type === 'grass') {
+    if (face === 2) {
+      for (let i = 0; i < 38; i++) {
+        ctx.fillStyle = palette[1 + Math.floor(random() * 3)];
+        ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1 + (random() > 0.7 ? 1 : 0), 1);
+      }
+    } else if (face === 3) {
+      ctx.fillStyle = '#75472f';
+      ctx.fillRect(0, 0, 32, 32);
+      for (let i = 0; i < 180; i++) {
+        ctx.fillStyle = palette[Math.floor(random() * palette.length)];
+        ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1, 1);
+      }
+    } else {
+      ctx.fillStyle = '#6da943';
+      ctx.fillRect(0, 0, 32, 6);
+      ctx.fillStyle = '#578d36';
+      ctx.fillRect(0, 6, 32, 2);
+      for (let i = 0; i < 110; i++) {
+        ctx.fillStyle = random() > 0.48 ? '#96613a' : '#75462e';
+        ctx.fillRect(Math.floor(random() * 32), 8 + Math.floor(random() * 24), 1 + (random() > 0.8 ? 1 : 0), 1);
+      }
+    }
+  }
+
+  if (type === 'stone') {
+    for (let i = 0; i < 7; i++) {
+      const x = Math.floor(random() * 29), y = Math.floor(random() * 29);
+      ctx.fillStyle = '#686e70';
+      ctx.fillRect(x, y, 2 + Math.floor(random() * 3), 1);
+      ctx.fillRect(x + 2, y + 1, 1, 2);
+    }
+  }
+
+  if (type === 'wood') {
+    if (face === 2 || face === 3) {
+      ctx.fillStyle = '#bd8b4b';
+      ctx.fillRect(0, 0, 32, 32);
+      for (let r = 0; r < 5; r++) {
+        ctx.strokeStyle = r % 2 ? '#8c592c' : '#d4a15c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(4 + r * 2, 4 + r * 2, 24 - r * 4, 24 - r * 4);
+      }
+      ctx.fillStyle = '#805027';
+      ctx.fillRect(15, 15, 2, 2);
+    } else {
+      for (let x = 3; x < 32; x += 7) {
+        ctx.fillStyle = '#704522';
+        ctx.fillRect(x, 0, 1, 32);
+        ctx.fillStyle = '#bd8745';
+        ctx.fillRect(x + 2, 0, 1, 32);
+      }
+      for (let i = 0; i < 12; i++) {
+        ctx.fillStyle = '#6d4527';
+        ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1, 3 + Math.floor(random() * 4));
+      }
+    }
+  }
+
+  if (type === 'leaves') {
+    for (let i = 0; i < 90; i++) {
+      ctx.fillStyle = palette[1 + Math.floor(random() * 3)];
+      ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1 + (random() > 0.65 ? 1 : 0), 1 + (random() > 0.75 ? 1 : 0));
+    }
+  }
+
+  if (['coal', 'iron', 'gold', 'diamond'].includes(type)) {
+    const oreColor = palettes[type][1];
+    const bright = palettes[type][2];
+    for (let i = 0; i < 10; i++) {
+      const x = 2 + Math.floor(random() * 27), y = 2 + Math.floor(random() * 27);
+      ctx.fillStyle = oreColor;
+      ctx.fillRect(x, y, 2 + Math.floor(random() * 3), 2 + Math.floor(random() * 3));
+      ctx.fillStyle = bright;
+      ctx.fillRect(x + 1, y, 1, 2);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestMipmapNearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = true;
+  return texture;
+}
+function makeBlockMaterials(type) {
+  return Array.from({ length: 6 }, (_, face) => {
+    let textureType = type;
+    if (type === 'grass' && face !== 2 && face !== 3) textureType = 'grassSide';
+    if (type === 'grass' && face === 3) textureType = 'dirt';
+    return new THREE.MeshLambertMaterial({ map: makeBlockTexture(textureType, face) });
+  });
+}
 const materials = {
-  grass: new THREE.MeshLambertMaterial({ color: 0x65ad42 }),
-  dirt: new THREE.MeshLambertMaterial({ color: 0x8a5735 }),
-  stone: new THREE.MeshLambertMaterial({ color: 0x888b8c }),
-  wood: new THREE.MeshLambertMaterial({ color: 0x91602f }),
-  leaves: new THREE.MeshLambertMaterial({ color: 0x347d32 }),
-  coal: new THREE.MeshLambertMaterial({ color: 0x30343a }),
-  iron: new THREE.MeshLambertMaterial({ color: 0xb8a99a }),
-  gold: new THREE.MeshLambertMaterial({ color: 0xe7bd35 }),
-  diamond: new THREE.MeshLambertMaterial({ color: 0x35d6d0 })
+  grass: makeBlockMaterials('grass'),
+  dirt: makeBlockMaterials('dirt'),
+  stone: makeBlockMaterials('stone'),
+  wood: makeBlockMaterials('wood'),
+  leaves: makeBlockMaterials('leaves'),
+  coal: makeBlockMaterials('coal'),
+  iron: makeBlockMaterials('iron'),
+  gold: makeBlockMaterials('gold'),
+  diamond: makeBlockMaterials('diamond')
 };
 const blockNames = Object.keys(materials);
 const blocks = new Map(); // "x,y,z" -> type
