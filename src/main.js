@@ -137,6 +137,23 @@ function removeBlockAt(x, y, z) {
   return true;
 }
 
+// Physique voxel : le sol réel dépend des blocs encore présents, pas du relief théorique.
+function highestSolidBlock(x, z, atOrBelow = 24) {
+  for (let y = Math.min(24, Math.floor(atOrBelow)); y >= 0; y--) {
+    if (getBlock(x, y, z)) return y;
+  }
+  return -1;
+}
+function canOccupyPlayer(x, z, feetY) {
+  const bodyBottom = Math.floor(feetY + 0.05);
+  const bodyTop = Math.floor(feetY + 1.7);
+  const px = Math.round(x), pz = Math.round(z);
+  for (let y = bodyBottom; y <= bodyTop; y++) {
+    if (getBlock(px, y, pz)) return false;
+  }
+  return true;
+}
+
 // Génération du terrain 64 x 64 et de ses couches souterraines.
 for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
@@ -317,10 +334,16 @@ function update(dt) {
   direction.y = 0;
   direction.normalize();
   const right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).negate();
-  camera.position.addScaledVector(direction, forward * 5.5 * dt);
-  camera.position.addScaledVector(right, side * 5.5 * dt);
-  camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
-  camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
+
+  // Déplacement horizontal bloqué uniquement par les blocs réellement présents.
+  const feetBeforeMove = camera.position.y - 1.65;
+  const moveX = right.x * side * 5.5 * dt + direction.x * forward * 5.5 * dt;
+  const moveZ = right.z * side * 5.5 * dt + direction.z * forward * 5.5 * dt;
+  const nextX = THREE.MathUtils.clamp(camera.position.x + moveX, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
+  const nextZ = THREE.MathUtils.clamp(camera.position.z + moveZ, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
+  if (canOccupyPlayer(nextX, camera.position.z, feetBeforeMove)) camera.position.x = nextX;
+  if (canOccupyPlayer(camera.position.x, nextZ, feetBeforeMove)) camera.position.z = nextZ;
+
   const [chunkX, chunkZ] = chunkOf(camera.position.x, camera.position.z);
   const currentChunkId = chunkKey(chunkX, chunkZ);
   if (currentChunkId !== lastChunkId) {
@@ -331,7 +354,13 @@ function update(dt) {
   if (keys.Space && onGround) verticalVelocity = 7;
   verticalVelocity -= 19 * dt;
   camera.position.y += verticalVelocity * dt;
-  const floor = heightAt(Math.round(camera.position.x), Math.round(camera.position.z)) + 1.65;
+
+  // Cherche le vrai support sous le joueur : une case minée devient un trou traversable.
+  const groundX = Math.round(camera.position.x);
+  const groundZ = Math.round(camera.position.z);
+  const feetY = camera.position.y - 1.65;
+  const supportY = highestSolidBlock(groundX, groundZ, Math.floor(feetY + 0.08));
+  const floor = supportY >= 0 ? supportY + 2.65 : -Infinity;
   if (camera.position.y < floor) {
     camera.position.y = floor;
     verticalVelocity = 0;
