@@ -38,7 +38,11 @@ const materials = {
   dirt: new THREE.MeshLambertMaterial({ color: 0x8a5735 }),
   stone: new THREE.MeshLambertMaterial({ color: 0x888b8c }),
   wood: new THREE.MeshLambertMaterial({ color: 0x91602f }),
-  leaves: new THREE.MeshLambertMaterial({ color: 0x347d32 })
+  leaves: new THREE.MeshLambertMaterial({ color: 0x347d32 }),
+  coal: new THREE.MeshLambertMaterial({ color: 0x30343a }),
+  iron: new THREE.MeshLambertMaterial({ color: 0xb8a99a }),
+  gold: new THREE.MeshLambertMaterial({ color: 0xe7bd35 }),
+  diamond: new THREE.MeshLambertMaterial({ color: 0x35d6d0 })
 };
 const blockNames = Object.keys(materials);
 const blocks = new Map(); // "x,y,z" -> type
@@ -163,6 +167,37 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
     }
   }
 }
+
+// Cavernes souterraines : un champ 3D déterministe crée des poches reliées
+// sans toucher à la couche de surface ni au point de départ.
+for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
+  for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
+    const h = heightAt(x, z);
+    for (let y = 2; y <= h - 3; y++) {
+      const caveA = Math.sin(x * 0.17 + y * 0.23 + Math.sin(z * 0.11));
+      const caveB = Math.cos(z * 0.16 - y * 0.19 + Math.sin(x * 0.09));
+      const caveC = Math.sin((x - z) * 0.075 + y * 0.13);
+      const caveField = caveA * 0.48 + caveB * 0.38 + caveC * 0.24;
+      if (caveField > 0.72) blocks.delete(keyOf(x, y, z));
+    }
+  }
+}
+
+// Minerais intégrés dans la roche. Leur répartition reste identique à chaque partie.
+for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
+  for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
+    const h = heightAt(x, z);
+    for (let y = 1; y < h - 1; y++) {
+      if (getBlock(x, y, z) !== 'stone') continue;
+      const oreRoll = Math.abs(Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453) % 1;
+      if (y <= 3 && oreRoll > 0.992) setBlockData(x, y, z, 'diamond');
+      else if (y <= 6 && oreRoll > 0.982) setBlockData(x, y, z, 'gold');
+      else if (oreRoll > 0.965) setBlockData(x, y, z, 'iron');
+      else if (oreRoll > 0.935) setBlockData(x, y, z, 'coal');
+    }
+  }
+}
+
 // Forêts déterministes, plus naturelles et adaptées aux pentes.
 for (let tx = -27; tx <= 27; tx += 6) {
   for (let tz = -27; tz <= 27; tz += 7) {
