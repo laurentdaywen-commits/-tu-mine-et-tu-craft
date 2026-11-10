@@ -74,6 +74,32 @@ function playAudioAsset(name, volume = 0.45, delay = 0, queueIfLoading = true) {
   gain.connect(ctx.destination);
   source.start(startAt);
 }
+
+// Sons d'animaux du pack Animal Calls de SFXMint (CC0 1.0).
+// Fichiers MP3 directs et stables ; les appels sont volontairement raccourcis
+// pour retrouver le rythme bref des bruitages de Minecraft.
+const ANIMAL_AUDIO_URLS = {
+  cow: 'https://sfxmint.com/dl/cow-moo-02.mp3',
+  pig: 'https://sfxmint.com/dl/pig-oink-02.mp3',
+  sheep: 'https://sfxmint.com/dl/sheep-bleat-02.mp3',
+  chicken: 'https://sfxmint.com/dl/hen-cluck-02.mp3'
+};
+const ANIMAL_AUDIO_CUTS = { cow: 1.25, pig: 0.85, sheep: 1.0, chicken: 0.55 };
+function playAnimalCall(type, distance) {
+  const url = ANIMAL_AUDIO_URLS[type];
+  if (!url) return;
+  const audio = new Audio(url);
+  audio.preload = 'auto';
+  audio.volume = Math.max(0.04, 0.32 * (1 - distance / 24));
+  audio.playbackRate = 1.15;
+  audio.play().then(() => {
+    window.setTimeout(() => {
+      audio.pause();
+      audio.currentTime = 0;
+    }, ANIMAL_AUDIO_CUTS[type] * 1000);
+  }).catch(error => console.warn('Son animal indisponible :', type, error));
+}
+
 // Sons de minage SFXMint, hébergés à leur adresse directe (hotlink autorisé, CC0 1.0).
 // Lecture via Audio HTML pour éviter les restrictions CORS du décodage WebAudio distant.
 const MINING_AUDIO_URLS = {
@@ -692,6 +718,7 @@ function spawnAnimals() {
     animals.push({
       group, type, targetX: group.position.x, targetZ: group.position.z,
       timer: Math.random() * 3, phase: Math.random() * Math.PI * 2,
+      callTimer: 5 + Math.random() * 13,
       speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
     });
   }
@@ -699,6 +726,12 @@ function spawnAnimals() {
 function updateAnimals(dt) {
   for (const animal of animals) {
     const group = animal.group;
+    animal.callTimer -= dt;
+    if (animal.callTimer <= 0) {
+      const distanceToPlayer = Math.hypot(group.position.x - camera.position.x, group.position.z - camera.position.z);
+      if (distanceToPlayer < 24) playAnimalCall(animal.type, distanceToPlayer);
+      animal.callTimer = 6 + Math.random() * 13;
+    }
     animal.timer -= dt;
     if (animal.timer <= 0 || Math.hypot(animal.targetX - group.position.x, animal.targetZ - group.position.z) < 0.35) {
       let found = false;
