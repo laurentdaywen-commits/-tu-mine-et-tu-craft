@@ -33,9 +33,9 @@ scene.add(sun);
 
 const controls = new PointerLockControls(camera, renderer.domElement);
 const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
-// Textures pixelisées inspirées du Minecraft classique, avec davantage de nuances.
+// Textures pixel-art 16x16, proches du pack Minecraft vanilla classique.
 function makeBlockTexture(type, face) {
-  const size = 32;
+  const size = 16;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -44,122 +44,118 @@ function makeBlockTexture(type, face) {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     return seed / 4294967296;
   };
+  const pixel = (x, y, color, w = 1, h = 1) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  };
   const palettes = {
-    grass: ['#68a943', '#75b84b', '#568f38', '#83c653'],
-    grassSide: ['#865334', '#96613a', '#75462e', '#a16b40'],
-    dirt: ['#865334', '#96613a', '#75462e', '#a16b40'],
-    stone: ['#85898b', '#969a9b', '#74797b', '#a4a7a6'],
-    wood: ['#96612f', '#a87339', '#754823', '#b78042'],
-    leaves: ['#347d32', '#438f38', '#286b2b', '#58a344'],
-    coal: ['#85898b', '#30343a', '#202428', '#555b60'],
-    iron: ['#85898b', '#b8a99a', '#d1c2b2', '#786e67'],
-    gold: ['#85898b', '#e7bd35', '#f5d65b', '#a77b20'],
-    diamond: ['#85898b', '#35c9c5', '#8af4e9', '#168f9a']
+    grass: ['#79b83b', '#70ad35', '#83c447', '#659d30', '#8bc94b'],
+    dirt: ['#866043', '#795438', '#906747', '#704c34', '#9b704d'],
+    stone: ['#7d7d7d', '#858585', '#747474', '#8c8c8c', '#696969'],
+    wood: ['#95602f', '#a8733d', '#815027', '#b47b40', '#704522'],
+    leaves: ['#3f8f25', '#347d20', '#4b9c2b', '#2f701e', '#58a832'],
+    coal: ['#7d7d7d', '#252525', '#171717', '#353535'],
+    iron: ['#7d7d7d', '#c1aa91', '#d8c5ad', '#8f806f'],
+    gold: ['#7d7d7d', '#e6bd27', '#f6d84b', '#b58a18'],
+    diamond: ['#7d7d7d', '#36c9c7', '#8af1e8', '#168f9a']
   };
   const palette = palettes[type] || palettes.stone;
-  ctx.fillStyle = palette[0];
-  ctx.fillRect(0, 0, size, size);
-  // Bruit de couleur en petits pixels pour casser les aplats trop uniformes.
-  for (let i = 0; i < 250; i++) {
-    ctx.fillStyle = palette[1 + Math.floor(random() * (palette.length - 1))];
-    const w = random() > 0.86 ? 2 : 1;
-    const h = random() > 0.9 ? 2 : 1;
-    ctx.globalAlpha = 0.35 + random() * 0.45;
-    ctx.fillRect(Math.floor(random() * size), Math.floor(random() * size), w, h);
-  }
-  ctx.globalAlpha = 1;
+  const fillNoise = (colors, count, minW = 1, maxW = 2) => {
+    for (let i = 0; i < count; i++) {
+      const w = minW + Math.floor(random() * (maxW - minW + 1));
+      const h = random() > 0.78 ? 2 : 1;
+      pixel(Math.floor(random() * (size - w + 1)), Math.floor(random() * (size - h + 1)),
+        colors[Math.floor(random() * colors.length)], w, h);
+    }
+  };
 
+  // Fonds et motifs spécifiques à chaque bloc.
   if (type === 'grass') {
     if (face === 2) {
-      for (let i = 0; i < 38; i++) {
-        ctx.fillStyle = palette[1 + Math.floor(random() * 3)];
-        ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1 + (random() > 0.7 ? 1 : 0), 1);
-      }
+      pixel(0, 0, '#79b83b', 16, 16);
+      fillNoise(['#70ad35', '#83c447', '#659d30', '#8bc94b', '#6da936'], 82);
+      for (let i = 0; i < 10; i++) pixel(Math.floor(random() * 16), Math.floor(random() * 16), '#5f982e');
     } else if (face === 3) {
-      ctx.fillStyle = '#75472f';
-      ctx.fillRect(0, 0, 32, 32);
-      for (let i = 0; i < 180; i++) {
-        ctx.fillStyle = palette[Math.floor(random() * palette.length)];
-        ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1, 1);
-      }
+      pixel(0, 0, '#866043', 16, 16);
+      fillNoise(palettes.dirt, 48);
     } else {
-      ctx.fillStyle = '#6da943';
-      ctx.fillRect(0, 0, 32, 6);
-      ctx.fillStyle = '#578d36';
-      ctx.fillRect(0, 6, 32, 2);
-      for (let i = 0; i < 110; i++) {
-        ctx.fillStyle = random() > 0.48 ? '#96613a' : '#75462e';
-        ctx.fillRect(Math.floor(random() * 32), 8 + Math.floor(random() * 24), 1 + (random() > 0.8 ? 1 : 0), 1);
+      // Côté du bloc : couche d'herbe irrégulière au-dessus de la terre.
+      pixel(0, 0, '#866043', 16, 16);
+      fillNoise(palettes.dirt, 34);
+      pixel(0, 0, '#79b83b', 16, 3);
+      pixel(0, 3, '#70ad35', 16, 1);
+      for (let x = 0; x < 16; x++) {
+        const fringe = random() > 0.68 ? 1 : 0;
+        if (fringe) pixel(x, 4, random() > 0.5 ? '#659d30' : '#70ad35');
+      }
+      for (let i = 0; i < 12; i++) pixel(Math.floor(random() * 16), 5 + Math.floor(random() * 11), random() > 0.5 ? '#704c34' : '#9b704d');
+    }
+  } else if (type === 'dirt') {
+    pixel(0, 0, '#866043', 16, 16);
+    fillNoise(palettes.dirt, 62);
+  } else if (type === 'stone' || ['coal', 'iron', 'gold', 'diamond'].includes(type)) {
+    pixel(0, 0, '#7d7d7d', 16, 16);
+    fillNoise(['#858585', '#747474', '#8c8c8c', '#696969'], 66);
+    // Petites cassures et taches discrètes, comme la pierre vanilla.
+    for (let i = 0; i < 5; i++) {
+      const x = Math.floor(random() * 14), y = Math.floor(random() * 14);
+      pixel(x, y, '#686868', 2, 1);
+      pixel(x + 1, y + 1, '#929292');
+    }
+    if (type !== 'stone') {
+      const ore = palettes[type];
+      // Filons en petits amas pixelisés, bordés d'une ombre plus sombre.
+      const clusters = 3 + Math.floor(random() * 2);
+      for (let c = 0; c < clusters; c++) {
+        const x = 1 + Math.floor(random() * 13), y = 1 + Math.floor(random() * 13);
+        pixel(x, y, ore[3], 2, 2);
+        pixel(x + 1, y, ore[1], 2, 1);
+        pixel(x, y + 1, ore[1], 1, 2);
+        pixel(x + 1, y + 1, ore[2], 1, 1);
       }
     }
-  }
-
-  if (type === 'stone') {
-    for (let i = 0; i < 7; i++) {
-      const x = Math.floor(random() * 29), y = Math.floor(random() * 29);
-      ctx.fillStyle = '#686e70';
-      ctx.fillRect(x, y, 2 + Math.floor(random() * 3), 1);
-      ctx.fillRect(x + 2, y + 1, 1, 2);
-    }
-  }
-
-  if (type === 'wood') {
+  } else if (type === 'wood') {
     if (face === 2 || face === 3) {
-      ctx.fillStyle = '#bd8b4b';
-      ctx.fillRect(0, 0, 32, 32);
-      for (let r = 0; r < 5; r++) {
-        ctx.strokeStyle = r % 2 ? '#8c592c' : '#d4a15c';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(4 + r * 2, 4 + r * 2, 24 - r * 4, 24 - r * 4);
-      }
-      ctx.fillStyle = '#805027';
-      ctx.fillRect(15, 15, 2, 2);
+      pixel(0, 0, '#bd9259', 16, 16);
+      pixel(2, 2, '#a97843', 12, 12);
+      pixel(4, 4, '#d0a56b', 8, 8);
+      pixel(6, 6, '#a97843', 4, 4);
+      pixel(7, 7, '#d0a56b', 2, 2);
+      pixel(7, 7, '#80502a');
+      pixel(1, 5, '#e0b77b'); pixel(12, 2, '#e0b77b');
+      pixel(3, 12, '#8a5a31'); pixel(12, 12, '#8a5a31');
     } else {
-      for (let x = 3; x < 32; x += 7) {
-        ctx.fillStyle = '#704522';
-        ctx.fillRect(x, 0, 1, 32);
-        ctx.fillStyle = '#bd8745';
-        ctx.fillRect(x + 2, 0, 1, 32);
+      pixel(0, 0, '#95602f', 16, 16);
+      for (let x = 0; x < 16; x++) {
+        const stripe = x % 4;
+        if (stripe === 0) pixel(x, 0, '#704522', 1, 16);
+        else if (stripe === 1) pixel(x, 0, '#b47b40', 1, 16);
+        else if (stripe === 2) pixel(x, 0, '#a8733d', 1, 16);
       }
-      for (let i = 0; i < 12; i++) {
-        ctx.fillStyle = '#6d4527';
-        ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1, 3 + Math.floor(random() * 4));
+      for (let i = 0; i < 7; i++) {
+        const x = Math.floor(random() * 16), y = Math.floor(random() * 13);
+        pixel(x, y, '#704522', 1, 2 + Math.floor(random() * 3));
       }
     }
-  }
-
-  if (type === 'leaves') {
-    for (let i = 0; i < 90; i++) {
-      ctx.fillStyle = palette[1 + Math.floor(random() * 3)];
-      ctx.fillRect(Math.floor(random() * 32), Math.floor(random() * 32), 1 + (random() > 0.65 ? 1 : 0), 1 + (random() > 0.75 ? 1 : 0));
-    }
-  }
-
-  if (['coal', 'iron', 'gold', 'diamond'].includes(type)) {
-    const oreColor = palettes[type][1];
-    const bright = palettes[type][2];
-    for (let i = 0; i < 10; i++) {
-      const x = 2 + Math.floor(random() * 27), y = 2 + Math.floor(random() * 27);
-      ctx.fillStyle = oreColor;
-      ctx.fillRect(x, y, 2 + Math.floor(random() * 3), 2 + Math.floor(random() * 3));
-      ctx.fillStyle = bright;
-      ctx.fillRect(x + 1, y, 1, 2);
+  } else if (type === 'leaves') {
+    pixel(0, 0, '#3f8f25', 16, 16);
+    fillNoise(['#347d20', '#4b9c2b', '#2f701e', '#58a832', '#438c27'], 90);
+    for (let i = 0; i < 14; i++) {
+      const x = Math.floor(random() * 15), y = Math.floor(random() * 15);
+      pixel(x, y, '#28691c', 2, 1);
     }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
-  texture.minFilter = THREE.NearestMipmapNearestFilter;
+  texture.minFilter = THREE.NearestFilter;
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.generateMipmaps = true;
+  texture.generateMipmaps = false;
   return texture;
 }
 function makeBlockMaterials(type) {
   return Array.from({ length: 6 }, (_, face) => {
-    let textureType = type;
-    if (type === 'grass' && face !== 2 && face !== 3) textureType = 'grassSide';
-    if (type === 'grass' && face === 3) textureType = 'dirt';
-    return new THREE.MeshLambertMaterial({ map: makeBlockTexture(textureType, face) });
+    return new THREE.MeshLambertMaterial({ map: makeBlockTexture(type, face) });
   });
 }
 const materials = {
