@@ -577,8 +577,13 @@ for (const type of ['cow', 'pig', 'sheep', 'chicken']) {
   animalMaterials[type].beak = new THREE.MeshLambertMaterial({ color: 0xe5a52c });
   animalMaterials[type].comb = new THREE.MeshLambertMaterial({ color: 0xc83d35 });
   animalMaterials[type].wattle = new THREE.MeshLambertMaterial({ color: 0xc83d35 });
-  animalMaterials[type].nostril = new THREE.MeshLambertMaterial({ color: 0x713d45 });
-  animalMaterials[type].hoof = new THREE.MeshLambertMaterial({ color: 0x382d29 });
+  // Le cochon reste entièrement rose : museau, narines et sabots compris.
+  animalMaterials[type].nostril = new THREE.MeshLambertMaterial({
+    color: type === 'pig' ? 0xc96f79 : 0x713d45
+  });
+  animalMaterials[type].hoof = new THREE.MeshLambertMaterial({
+    color: type === 'pig' ? 0xd98289 : 0x382d29
+  });
 }
 const animalBox = new THREE.BoxGeometry(1, 1, 1);
 function animalPart(group, material, x, y, z, sx, sy, sz) {
