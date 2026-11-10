@@ -170,6 +170,49 @@ const materials = {
   diamond: makeBlockMaterials('diamond')
 };
 const blockNames = Object.keys(materials);
+
+const inventory = Object.fromEntries(Object.keys(materials).map(type => [type, 0]));
+const oreDrops = { coal: 'coal', iron: 'raw_iron', gold: 'raw_gold', diamond: 'diamond' };
+function addToInventory(blockType) {
+  const item = oreDrops[blockType] || blockType;
+  inventory[item] = (inventory[item] || 0) + 1;
+  const counter = document.querySelector('[data-count="' + item + '"]');
+  if (counter) counter.textContent = inventory[item];
+}
+function drawOreInventoryIcons() {
+  const palettes = {
+    coal: ['#25292d', '#69747c', '#101214', '#c0c7ca'],
+    raw_iron: ['#bd9878', '#f0d4b5', '#76533c', '#fff0dc'],
+    raw_gold: ['#d6a51c', '#ffeb72', '#80530a', '#fff5b8'],
+    diamond: ['#20aeb7', '#a1fff5', '#086b7c', '#e0fffc']
+  };
+  for (const type of Object.keys(palettes)) {
+    const canvas = document.querySelector('canvas[data-ore-icon="' + type + '"]');
+    if (!canvas) continue;
+    const ctx = canvas.getContext('2d');
+    const p = palettes[type];
+    ctx.clearRect(0, 0, 32, 32);
+    ctx.fillStyle = '#151515';
+    ctx.beginPath();
+    ctx.moveTo(5, 13); ctx.lineTo(11, 5); ctx.lineTo(21, 6);
+    ctx.lineTo(28, 14); ctx.lineTo(24, 24); ctx.lineTo(15, 29);
+    ctx.lineTo(6, 24); ctx.lineTo(3, 18); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = p[0];
+    ctx.beginPath();
+    ctx.moveTo(5, 12); ctx.lineTo(11, 5); ctx.lineTo(21, 7);
+    ctx.lineTo(27, 14); ctx.lineTo(23, 23); ctx.lineTo(15, 27);
+    ctx.lineTo(7, 22); ctx.lineTo(4, 17); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = p[1];
+    ctx.beginPath(); ctx.moveTo(5, 12); ctx.lineTo(11, 5);
+    ctx.lineTo(17, 14); ctx.lineTo(10, 21); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = p[2];
+    ctx.beginPath(); ctx.moveTo(17, 14); ctx.lineTo(27, 14);
+    ctx.lineTo(23, 23); ctx.lineTo(15, 27); ctx.lineTo(10, 21); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = p[3]; ctx.fillRect(10, 9, 4, 2); ctx.fillRect(7, 15, 2, 2);
+  }
+}
+drawOreInventoryIcons();
+
 const blocks = new Map(); // "x,y,z" -> type
 const chunks = new Map(); // "cx,cz" -> meshes du chunk
 const dummy = new THREE.Object3D();
@@ -260,7 +303,11 @@ function addBlock(x, y, z, type) {
   return true;
 }
 function removeBlockAt(x, y, z) {
-  if (y <= 0 || !getBlock(x, y, z)) return false;
+  if (y <= 0) return false;
+  const minedType = getBlock(x, y, z);
+  if (!minedType) return false;
+  // Les blocs ordinaires sont récoltés comme blocs ; les minerais donnent uniquement leur ressource.
+  addToInventory(minedType);
   blocks.delete(keyOf(x, y, z));
   rebuildAt(x, z);
   return true;
@@ -414,6 +461,8 @@ function mineBlock() {
   if (target) removeBlockAt(...target.position);
 }
 function placeBlock() {
+  // Les ressources minières récoltées ne sont pas des blocs à replacer.
+  if (oreDrops[selected]) return;
   const target = targetBlock();
   if (!target) return;
   const [x, y, z] = target.position;
