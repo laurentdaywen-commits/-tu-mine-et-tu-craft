@@ -483,6 +483,182 @@ function canOccupyPlayer(x, z, feetY) {
   return true;
 }
 
+// Animaux pacifiques : modèles cubiques légers et déplacements autonomes.
+const animals = [];
+const MAX_ANIMALS = 12;
+const animalMaterials = {
+  cow: {
+    body: new THREE.MeshLambertMaterial({ color: 0xf0eee5 }),
+    dark: new THREE.MeshLambertMaterial({ color: 0x292522 }),
+    head: new THREE.MeshLambertMaterial({ color: 0x4a3024 }),
+    muzzle: new THREE.MeshLambertMaterial({ color: 0xc98d78 }),
+    legs: new THREE.MeshLambertMaterial({ color: 0x4b3529 }),
+    horn: new THREE.MeshLambertMaterial({ color: 0xd8c99e })
+  },
+  pig: {
+    body: new THREE.MeshLambertMaterial({ color: 0xe99a9d }),
+    head: new THREE.MeshLambertMaterial({ color: 0xf0aeb0 }),
+    muzzle: new THREE.MeshLambertMaterial({ color: 0xd77c85 }),
+    legs: new THREE.MeshLambertMaterial({ color: 0xd98289 }),
+    dark: new THREE.MeshLambertMaterial({ color: 0x713d45 })
+  },
+  sheep: {
+    body: new THREE.MeshLambertMaterial({ color: 0xe8e5d9 }),
+    head: new THREE.MeshLambertMaterial({ color: 0xaaa19a }),
+    muzzle: new THREE.MeshLambertMaterial({ color: 0xd5aaa0 }),
+    legs: new THREE.MeshLambertMaterial({ color: 0x51433f }),
+    wool: new THREE.MeshLambertMaterial({ color: 0xf4f1e8 })
+  },
+  chicken: {
+    body: new THREE.MeshLambertMaterial({ color: 0xf1eee5 }),
+    head: new THREE.MeshLambertMaterial({ color: 0xf7f3e9 }),
+    beak: new THREE.MeshLambertMaterial({ color: 0xe5a52c }),
+    comb: new THREE.MeshLambertMaterial({ color: 0xc83d35 }),
+    legs: new THREE.MeshLambertMaterial({ color: 0xd99a35 }),
+    wing: new THREE.MeshLambertMaterial({ color: 0xd8d4c9 })
+  }
+};
+const animalBox = new THREE.BoxGeometry(1, 1, 1);
+function animalPart(group, material, x, y, z, sx, sy, sz) {
+  const mesh = new THREE.Mesh(animalBox, material);
+  mesh.position.set(x, y, z);
+  mesh.scale.set(sx, sy, sz);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+function makeAnimal(type) {
+  const group = new THREE.Group();
+  const m = animalMaterials[type];
+  const legs = [];
+  if (type === 'cow') {
+    animalPart(group, m.body, 0, 0.92, 0, 1.12, 0.82, 1.42);
+    animalPart(group, m.dark, -0.28, 1.19, -0.22, 0.36, 0.3, 0.38);
+    animalPart(group, m.dark, 0.3, 0.72, 0.28, 0.3, 0.3, 0.42);
+    animalPart(group, m.head, 0, 1.18, 0.79, 0.62, 0.62, 0.58);
+    animalPart(group, m.muzzle, 0, 1.02, 1.1, 0.42, 0.28, 0.2);
+    animalPart(group, m.horn, -0.27, 1.55, 0.69, 0.12, 0.22, 0.12);
+    animalPart(group, m.horn, 0.27, 1.55, 0.69, 0.12, 0.22, 0.12);
+  } else if (type === 'pig') {
+    animalPart(group, m.body, 0, 0.82, 0, 0.96, 0.72, 1.22);
+    animalPart(group, m.head, 0, 1.08, 0.68, 0.62, 0.62, 0.58);
+    animalPart(group, m.muzzle, 0, 0.98, 1.0, 0.42, 0.3, 0.16);
+    animalPart(group, m.dark, -0.12, 1.0, 1.09, 0.06, 0.1, 0.025);
+    animalPart(group, m.dark, 0.12, 1.0, 1.09, 0.06, 0.1, 0.025);
+  } else if (type === 'sheep') {
+    animalPart(group, m.body, 0, 0.96, 0, 1.05, 0.95, 1.28);
+    animalPart(group, m.wool, -0.34, 1.15, 0.12, 0.42, 0.55, 0.5);
+    animalPart(group, m.wool, 0.34, 1.15, -0.18, 0.42, 0.55, 0.5);
+    animalPart(group, m.head, 0, 1.15, 0.73, 0.54, 0.62, 0.5);
+    animalPart(group, m.muzzle, 0, 0.98, 1.0, 0.3, 0.22, 0.12);
+  } else {
+    animalPart(group, m.body, 0, 0.72, 0, 0.62, 0.72, 0.72);
+    animalPart(group, m.wing, -0.31, 0.79, -0.02, 0.16, 0.42, 0.48);
+    animalPart(group, m.wing, 0.31, 0.79, -0.02, 0.16, 0.42, 0.48);
+    animalPart(group, m.head, 0, 1.16, 0.29, 0.4, 0.4, 0.4);
+    animalPart(group, m.beak, 0, 1.08, 0.55, 0.22, 0.13, 0.2);
+    animalPart(group, m.comb, 0, 1.42, 0.27, 0.12, 0.18, 0.12);
+  }
+  const legMaterial = m.legs;
+  const legX = type === 'chicken' ? 0.18 : (type === 'pig' ? 0.31 : 0.36);
+  const legZ = type === 'chicken' ? 0.2 : 0.43;
+  const legW = type === 'chicken' ? 0.09 : 0.17;
+  const legH = type === 'chicken' ? 0.38 : 0.62;
+  for (const x of [-legX, legX]) {
+    for (const z of [-legZ, legZ]) {
+      legs.push(animalPart(group, legMaterial, x, legH / 2, z, legW, legH, legW));
+    }
+  }
+  group.userData.legs = legs;
+  group.userData.type = type;
+  return group;
+}
+function animalGroundAt(x, z) {
+  const gx = Math.round(x), gz = Math.round(z);
+  if (gx <= WORLD_MIN || gx >= WORLD_MAX || gz <= WORLD_MIN || gz >= WORLD_MAX) return null;
+  const top = highestSolidBlock(gx, gz);
+  if (top < 0 || getBlock(gx, top, gz) !== 'grass') return null;
+  if (Math.abs(top - highestSolidBlock(gx + 1, gz)) > 1 ||
+      Math.abs(top - highestSolidBlock(gx - 1, gz)) > 1 ||
+      Math.abs(top - highestSolidBlock(gx, gz + 1)) > 1 ||
+      Math.abs(top - highestSolidBlock(gx, gz - 1)) > 1) return null;
+  if (getBlock(gx, top + 1, gz) || getBlock(gx, top + 2, gz)) return null;
+  return top + 0.5;
+}
+function spawnAnimals() {
+  const types = ['cow', 'pig', 'sheep', 'chicken'];
+  let attempts = 0;
+  while (animals.length < MAX_ANIMALS && attempts < 700) {
+    attempts++;
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 7 + Math.random() * 20;
+    const x = camera.position.x + Math.cos(angle) * distance;
+    const z = camera.position.z + Math.sin(angle) * distance;
+    const ground = animalGroundAt(x, z);
+    if (ground === null) continue;
+    if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 3.2)) continue;
+    const type = types[Math.floor(Math.random() * types.length)];
+    const group = makeAnimal(type);
+    group.position.set(Math.round(x), ground, Math.round(z));
+    group.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(group);
+    animals.push({
+      group, type, targetX: group.position.x, targetZ: group.position.z,
+      timer: Math.random() * 3, phase: Math.random() * Math.PI * 2,
+      speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
+    });
+  }
+}
+function updateAnimals(dt) {
+  for (const animal of animals) {
+    const group = animal.group;
+    animal.timer -= dt;
+    if (animal.timer <= 0 || Math.hypot(animal.targetX - group.position.x, animal.targetZ - group.position.z) < 0.35) {
+      let found = false;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 2 + Math.random() * 4;
+        const tx = group.position.x + Math.cos(angle) * distance;
+        const tz = group.position.z + Math.sin(angle) * distance;
+        if (animalGroundAt(tx, tz) === null) continue;
+        animal.targetX = Math.round(tx);
+        animal.targetZ = Math.round(tz);
+        found = true;
+        break;
+      }
+      animal.timer = found ? 2.5 + Math.random() * 4 : 1.2;
+    }
+    const dx = animal.targetX - group.position.x;
+    const dz = animal.targetZ - group.position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance > 0.08) {
+      const step = Math.min(distance, animal.speed * dt);
+      const nx = group.position.x + dx / distance * step;
+      const nz = group.position.z + dz / distance * step;
+      const ground = animalGroundAt(nx, nz);
+      if (ground !== null) {
+        group.position.x = nx;
+        group.position.z = nz;
+        group.position.y = THREE.MathUtils.lerp(group.position.y, ground, Math.min(1, dt * 8));
+        const wantedRotation = Math.atan2(dx, dz);
+        let angleDiff = wantedRotation - group.rotation.y;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        group.rotation.y += angleDiff * Math.min(1, dt * 5);
+        animal.phase += dt * 9;
+        group.userData.legs.forEach((leg, index) => {
+          leg.rotation.x = Math.sin(animal.phase + (index % 2) * Math.PI) * 0.48;
+        });
+      } else {
+        animal.timer = 0;
+      }
+    } else {
+      group.userData.legs.forEach(leg => { leg.rotation.x *= 0.75; });
+    }
+  }
+}
+
+
 // Génération du terrain 64 x 64 et de ses couches souterraines.
 for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
@@ -552,6 +728,7 @@ for (let tx = -27; tx <= 27; tx += 6) {
 // Chargement initial autour du point de départ (les autres chunks seront chargés à l'approche).
 const groundY = heightAt(0, 10) + 2.7;
 camera.position.set(0, groundY, 10);
+spawnAnimals();
 // Oriente légèrement la vue vers le terrain pour rendre le monde visible dès le démarrage.
 camera.rotation.order = 'YXZ';
 camera.rotation.x = -0.65;
@@ -738,6 +915,8 @@ function update(dt) {
   } else {
     stepTimer = 0;
   }
+
+  updateAnimals(dt);
 }
 function animate() {
   requestAnimationFrame(animate);
