@@ -74,6 +74,26 @@ function playAudioAsset(name, volume = 0.45, delay = 0, queueIfLoading = true) {
   gain.connect(ctx.destination);
   source.start(startAt);
 }
+// Sons de minage SFXMint, hébergés à leur adresse directe (hotlink autorisé, CC0 1.0).
+// Lecture via Audio HTML pour éviter les restrictions CORS du décodage WebAudio distant.
+const MINING_AUDIO_URLS = {
+  pickaxe: 'https://sfxmint.com/dl/pickaxe-02.mp3',
+  ore: 'https://sfxmint.com/dl/pickaxe-03.mp3',
+  break: 'https://sfxmint.com/dl/rock-break-08.mp3',
+  crumble: 'https://sfxmint.com/dl/rock-crumbling-04.mp3'
+};
+function playRemoteMiningSound(name, volume = 0.4, delay = 0) {
+  const url = MINING_AUDIO_URLS[name];
+  if (!url) return;
+  const play = () => {
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    audio.volume = Math.max(0, Math.min(1, volume));
+    audio.play().catch(error => console.warn('Son de minage indisponible :', name, error));
+  };
+  if (delay > 0) window.setTimeout(play, delay * 1000);
+  else play();
+}
 function playSound(kind, material = 'stone') {
   const ctx = ensureAudio();
   if (!ctx) return;
@@ -106,11 +126,15 @@ function playSound(kind, material = 'stone') {
   };
   if (kind === 'mine') {
     if (material === 'wood') playAudioAsset('wood', 0.5);
-    else if (material === 'diamond') playAudioAsset('crystal', 0.58);
-    else if (material !== 'leaves') {
-      playAudioAsset('pick', 0.54);
-      playAudioAsset('crack', 0.44, 0.09);
-      playAudioAsset('rubble', 0.34, 0.19);
+    else if (material === 'leaves') {
+      // Les feuilles restent discrètes, sans son métallique de pioche.
+    } else if (['coal', 'iron', 'gold', 'diamond'].includes(material)) {
+      playRemoteMiningSound('ore', 0.52);
+      playRemoteMiningSound('break', 0.28, 0.12);
+    } else {
+      playRemoteMiningSound('pickaxe', 0.38);
+      playRemoteMiningSound('break', 0.42, 0.12);
+      playRemoteMiningSound('crumble', 0.30, 0.24);
     }
   } else if (kind === 'place') {
     playAudioAsset('place', 0.5);
