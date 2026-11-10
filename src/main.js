@@ -431,7 +431,7 @@ document.querySelectorAll('.slot').forEach(button => {
 });
 addEventListener('keydown', event => {
   keys[event.code] = true;
-  if (/^Digit[1-5]$/.test(event.code)) selectBlock(blockNames[Number(event.code.slice(-1)) - 1]);
+  if (/^(Digit|Numpad)[1-9]$/.test(event.code)) selectBlock(blockNames[Number(event.code.slice(-1)) - 1]);
   if (event.code === 'Space') event.preventDefault();
   if (event.code === 'KeyE') placeBlock();
 });
