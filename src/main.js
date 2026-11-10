@@ -10,9 +10,40 @@ const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
 
-// Effets sonores procéduraux : aucun fichier audio externe nécessaire.
+// Effets audio du pack CC0 : sons réels intégrés au projet.
+const AUDIO_ASSETS = {
+  select: new URL('../assets/audio/ui-select.mp3', import.meta.url).href,
+  gem: new URL('../assets/audio/pickup-gem.mp3', import.meta.url).href,
+  item: new URL('../assets/audio/pickup-item.mp3', import.meta.url).href,
+  pick: new URL('../assets/audio/mine-pick.mp3', import.meta.url).href,
+  crack: new URL('../assets/audio/mine-crack.mp3', import.meta.url).href,
+  rubble: new URL('../assets/audio/mine-rubble.mp3', import.meta.url).href,
+  crystal: new URL('../assets/audio/mine-crystal.mp3', import.meta.url).href,
+  wood: new URL('../assets/audio/mine-wood.mp3', import.meta.url).href,
+  place: new URL('../assets/audio/place-block.mp3', import.meta.url).href
+};
 let audioContext = null;
 let noiseBuffer = null;
+let audioLoading = null;
+const audioBuffers = new Map();
+const pendingAudio = [];
+function preloadAudio(ctx) {
+  if (audioLoading) return audioLoading;
+  audioLoading = Promise.all(Object.entries(AUDIO_ASSETS).map(async ([name, url]) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Impossible de charger le son : ' + name);
+    const encoded = await response.arrayBuffer();
+    audioBuffers.set(name, await ctx.decodeAudioData(encoded));
+  })).then(() => {
+    const queued = pendingAudio.splice(0);
+    queued.forEach(sound => playAudioAsset(sound.name, sound.volume, sound.delay, false));
+  }).catch(error => {
+    console.warn('Chargement des effets sonores incomplet :', error);
+    pendingAudio.length = 0;
+    audioLoading = null;
+  });
+  return audioLoading;
+}
 function ensureAudio() {
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtor) return null;
@@ -23,7 +54,25 @@ function ensureAudio() {
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   }
   if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+  preloadAudio(audioContext);
   return audioContext;
+}
+function playAudioAsset(name, volume = 0.45, delay = 0, queueIfLoading = true) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const buffer = audioBuffers.get(name);
+  if (!buffer) {
+    if (queueIfLoading && pendingAudio.length < 12) pendingAudio.push({ name, volume, delay });
+    return;
+  }
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const startAt = ctx.currentTime + delay;
+  source.buffer = buffer;
+  gain.gain.setValueAtTime(volume, startAt);
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.start(startAt);
 }
 function playSound(kind, material = 'stone') {
   const ctx = ensureAudio();
@@ -56,19 +105,22 @@ function playSound(kind, material = 'stone') {
     source.start(now); source.stop(now + duration);
   };
   if (kind === 'mine') {
-    const pitch = material === 'leaves' ? 2300 : material === 'wood' ? 850 : material === 'stone' ? 520 : 1250;
-    noise(0.13, 0.22, pitch);
-    tone(pitch, pitch * 0.42, 0.11, 0.12, 'triangle');
+    if (material === 'wood') playAudioAsset('wood', 0.5);
+    else if (material === 'diamond') playAudioAsset('crystal', 0.58);
+    else if (material !== 'leaves') {
+      playAudioAsset('pick', 0.54);
+      playAudioAsset('crack', 0.44, 0.09);
+      playAudioAsset('rubble', 0.34, 0.19);
+    }
   } else if (kind === 'place') {
-    tone(material === 'wood' ? 240 : 390, material === 'wood' ? 110 : 180, 0.12, 0.16, 'triangle');
-    tone(620, 360, 0.07, 0.06, 'sine', 0.025);
+    playAudioAsset('place', 0.5);
   } else if (kind === 'jump') {
     tone(190, 520, 0.18, 0.13, 'sine');
   } else if (kind === 'step') {
     noise(0.055, 0.075, 420);
     tone(105, 65, 0.06, 0.035, 'sine');
   } else if (kind === 'select') {
-    tone(520, 760, 0.07, 0.07, 'sine');
+    playAudioAsset('select', 0.42);
   }
 }
 function jumpPlayer() {
@@ -76,7 +128,7 @@ function jumpPlayer() {
   verticalVelocity = 7;
   playSound('jump');
 }
-
+ensureAudio();
 scene.background = new THREE.Color(0x87c8f0);
 scene.fog = new THREE.Fog(0x87c8f0, 38, 100);
 
@@ -246,6 +298,7 @@ function addToInventory(blockType) {
   inventory[item] = (inventory[item] || 0) + 1;
   const counter = document.querySelector('[data-count="' + item + '"]');
   if (counter) counter.textContent = inventory[item];
+  playAudioAsset(item === 'diamond' ? 'gem' : 'item', item === 'diamond' ? 0.48 : 0.28, 0.12);
 }
 function drawOreInventoryIcons() {
   const palettes = {

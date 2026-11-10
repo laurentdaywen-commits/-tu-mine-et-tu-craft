@@ -1,0 +1,10 @@
+CC0 1.0 Universal — Public Domain Dedication
+
+The creator dedicates the 24 original synthesized WAV audio assets in this package to the public domain under the Creative Commons CC0 1.0 Universal dedication, waiving copyright and related rights to the extent permitted by law.
+
+You may copy, modify, distribute, and use these original sounds, including commercially, without asking permission. Attribution is not required.
+
+The complete CC0 1.0 Universal legal text, including its fallback license, limitations, and warranty disclaimer, is available at:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode.en
+
+This statement applies to the 24 original audio assets under WAV/. It does not claim rights in third-party names, platforms, or trademarks. The sounds are provided without warranties.
