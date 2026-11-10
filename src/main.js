@@ -85,13 +85,20 @@ const ANIMAL_AUDIO_URLS = {
   chicken: 'https://sfxmint.com/dl/hen-cluck-02.mp3'
 };
 const ANIMAL_AUDIO_CUTS = { cow: 1.25, pig: 0.85, sheep: 1.0, chicken: 0.55 };
+// Un seul cri à la fois : évite que les groupes d'animaux deviennent bruyants.
+let nextAnimalCallAt = 0;
 function playAnimalCall(type, distance) {
   const url = ANIMAL_AUDIO_URLS[type];
-  if (!url) return;
+  if (!url || distance >= 24) return;
+  const now = performance.now();
+  if (now < nextAnimalCallAt) return;
+  nextAnimalCallAt = now + 1100 + Math.random() * 900;
   const audio = new Audio(url);
   audio.preload = 'auto';
-  audio.volume = Math.max(0.04, 0.32 * (1 - distance / 24));
-  audio.playbackRate = 1.15;
+  // Atténuation progressive avec la distance et légère variation naturelle.
+  const distanceGain = Math.pow(Math.max(0, 1 - distance / 26), 1.35);
+  audio.volume = Math.max(0.025, Math.min(0.34, 0.34 * distanceGain * (0.82 + Math.random() * 0.18)));
+  audio.playbackRate = 1.08 + Math.random() * 0.14;
   audio.play().then(() => {
     window.setTimeout(() => {
       audio.pause();
@@ -718,7 +725,7 @@ function spawnAnimals() {
     animals.push({
       group, type, targetX: group.position.x, targetZ: group.position.z,
       timer: Math.random() * 3, phase: Math.random() * Math.PI * 2,
-      callTimer: 5 + Math.random() * 13,
+      callTimer: 9 + Math.random() * 17,
       speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
     });
   }
@@ -730,7 +737,7 @@ function updateAnimals(dt) {
     if (animal.callTimer <= 0) {
       const distanceToPlayer = Math.hypot(group.position.x - camera.position.x, group.position.z - camera.position.z);
       if (distanceToPlayer < 24) playAnimalCall(animal.type, distanceToPlayer);
-      animal.callTimer = 6 + Math.random() * 13;
+      animal.callTimer = 10 + Math.random() * 19;
     }
     animal.timer -= dt;
     if (animal.timer <= 0 || Math.hypot(animal.targetX - group.position.x, animal.targetZ - group.position.z) < 0.35) {
