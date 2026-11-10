@@ -486,38 +486,100 @@ function canOccupyPlayer(x, z, feetY) {
 // Animaux pacifiques : modèles cubiques légers et déplacements autonomes.
 const animals = [];
 const MAX_ANIMALS = 12;
-const animalMaterials = {
-  cow: {
-    body: new THREE.MeshLambertMaterial({ color: 0xf0eee5 }),
-    dark: new THREE.MeshLambertMaterial({ color: 0x292522 }),
-    head: new THREE.MeshLambertMaterial({ color: 0x4a3024 }),
-    muzzle: new THREE.MeshLambertMaterial({ color: 0xc98d78 }),
-    legs: new THREE.MeshLambertMaterial({ color: 0x4b3529 }),
-    horn: new THREE.MeshLambertMaterial({ color: 0xd8c99e })
-  },
-  pig: {
-    body: new THREE.MeshLambertMaterial({ color: 0xe99a9d }),
-    head: new THREE.MeshLambertMaterial({ color: 0xf0aeb0 }),
-    muzzle: new THREE.MeshLambertMaterial({ color: 0xd77c85 }),
-    legs: new THREE.MeshLambertMaterial({ color: 0xd98289 }),
-    dark: new THREE.MeshLambertMaterial({ color: 0x713d45 })
-  },
-  sheep: {
-    body: new THREE.MeshLambertMaterial({ color: 0xe8e5d9 }),
-    head: new THREE.MeshLambertMaterial({ color: 0xaaa19a }),
-    muzzle: new THREE.MeshLambertMaterial({ color: 0xd5aaa0 }),
-    legs: new THREE.MeshLambertMaterial({ color: 0x51433f }),
-    wool: new THREE.MeshLambertMaterial({ color: 0xf4f1e8 })
-  },
-  chicken: {
-    body: new THREE.MeshLambertMaterial({ color: 0xf1eee5 }),
-    head: new THREE.MeshLambertMaterial({ color: 0xf7f3e9 }),
-    beak: new THREE.MeshLambertMaterial({ color: 0xe5a52c }),
-    comb: new THREE.MeshLambertMaterial({ color: 0xc83d35 }),
-    legs: new THREE.MeshLambertMaterial({ color: 0xd99a35 }),
-    wing: new THREE.MeshLambertMaterial({ color: 0xd8d4c9 })
+// Textures animales pixelisées 16x16, dans l'esprit des textures Minecraft.
+const animalTextureCache = new Map();
+function makeAnimalTexture(type, part) {
+  const key = type + ':' + part;
+  if (animalTextureCache.has(key)) return animalTextureCache.get(key);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+  const palettes = {
+    cow: {
+      body: ['#eee9dc', '#292522', '#f7f3e9'],
+      head: ['#704b36', '#563726', '#8a6046'],
+      muzzle: ['#d79b83', '#bd7968', '#e9b39b'],
+      legs: ['#49352b', '#5e4637', '#342720']
+    },
+    pig: {
+      body: ['#e99a9d', '#d98289', '#f4b5b5'],
+      head: ['#efa7aa', '#d9878e', '#f6bdbb'],
+      muzzle: ['#d77c85', '#b95f6b', '#f1a0a4'],
+      legs: ['#d98289', '#c66e78', '#eda0a4']
+    },
+    sheep: {
+      body: ['#eeeae0', '#d9d4c9', '#faf7ed'],
+      head: ['#aaa19a', '#817873', '#c1b8ae'],
+      muzzle: ['#d7aaa0', '#bf8981', '#e8c0b4'],
+      legs: ['#51433f', '#6c5b53', '#392f2c']
+    },
+    chicken: {
+      body: ['#f1eee5', '#ddd9cf', '#fffaf0'],
+      head: ['#f7f3e9', '#e7e1d5', '#fffdf5'],
+      wing: ['#d8d4c9', '#c5c0b5', '#eee9df'],
+      legs: ['#d99a35', '#bd7924', '#efbd51']
+    }
+  };
+  const p = palettes[type][part] || palettes[type].body;
+  ctx.fillStyle = p[0];
+  ctx.fillRect(0, 0, 16, 16);
+  // Motif de petites nuances carrées, sans flou ni dégradé.
+  let seed = type.length * 71 + part.length * 37;
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      seed = (seed * 9301 + 49297) % 233280;
+      const roll = seed / 233280;
+      if (roll > 0.79) {
+        ctx.fillStyle = p[1];
+        ctx.fillRect(x, y, 1, 1);
+      } else if (roll < 0.12) {
+        ctx.fillStyle = p[2];
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
   }
-};
+  if (type === 'cow' && part === 'body') {
+    // Grandes taches noires irrégulières typiques de la vache Minecraft.
+    for (const spot of [[2,2,4,3],[10,1,4,4],[6,8,3,3],[12,11,3,4],[1,12,3,2]]) {
+      ctx.fillStyle = p[1];
+      ctx.fillRect(spot[0], spot[1], spot[2], spot[3]);
+      ctx.fillRect(spot[0] + 1, spot[1] - 1, Math.max(1, spot[2] - 2), 1);
+    }
+  }
+  if (type === 'sheep' && part === 'body') {
+    for (let i = 0; i < 28; i++) {
+      const x = (i * 7 + 3) % 16, y = (i * 11 + 5) % 16;
+      ctx.fillStyle = i % 2 ? p[1] : p[2];
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  animalTextureCache.set(key, texture);
+  return texture;
+}
+const animalMaterials = {};
+for (const type of ['cow', 'pig', 'sheep', 'chicken']) {
+  animalMaterials[type] = {};
+  const parts = type === 'cow' ? ['body','head','muzzle','legs'] :
+    type === 'pig' ? ['body','head','muzzle','legs'] :
+    type === 'sheep' ? ['body','head','muzzle','legs'] : ['body','head','wing','legs'];
+  for (const part of parts) {
+    animalMaterials[type][part] = new THREE.MeshLambertMaterial({ map: makeAnimalTexture(type, part) });
+  }
+  animalMaterials[type].dark = new THREE.MeshLambertMaterial({ color: type === 'cow' ? 0x292522 : 0x292522 });
+  animalMaterials[type].eye = new THREE.MeshLambertMaterial({ color: 0x171412 });
+  animalMaterials[type].eyeLight = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  animalMaterials[type].horn = new THREE.MeshLambertMaterial({ color: 0xd8c99e });
+  animalMaterials[type].beak = new THREE.MeshLambertMaterial({ color: 0xe5a52c });
+  animalMaterials[type].comb = new THREE.MeshLambertMaterial({ color: 0xc83d35 });
+  animalMaterials[type].wattle = new THREE.MeshLambertMaterial({ color: 0xc83d35 });
+  animalMaterials[type].nostril = new THREE.MeshLambertMaterial({ color: 0x713d45 });
+  animalMaterials[type].hoof = new THREE.MeshLambertMaterial({ color: 0x382d29 });
+}
 const animalBox = new THREE.BoxGeometry(1, 1, 1);
 function animalPart(group, material, x, y, z, sx, sy, sz) {
   const mesh = new THREE.Mesh(animalBox, material);
@@ -528,46 +590,65 @@ function animalPart(group, material, x, y, z, sx, sy, sz) {
   group.add(mesh);
   return mesh;
 }
+function addAnimalEyes(group, material, x, y, z, spread = 0.2, size = 0.075) {
+  for (const side of [-1, 1]) {
+    animalPart(group, material, side * spread, y, z, size, size, 0.035);
+  }
+}
 function makeAnimal(type) {
   const group = new THREE.Group();
   const m = animalMaterials[type];
   const legs = [];
   if (type === 'cow') {
-    animalPart(group, m.body, 0, 0.92, 0, 1.12, 0.82, 1.42);
-    animalPart(group, m.dark, -0.28, 1.19, -0.22, 0.36, 0.3, 0.38);
-    animalPart(group, m.dark, 0.3, 0.72, 0.28, 0.3, 0.3, 0.42);
-    animalPart(group, m.head, 0, 1.18, 0.79, 0.62, 0.62, 0.58);
-    animalPart(group, m.muzzle, 0, 1.02, 1.1, 0.42, 0.28, 0.2);
-    animalPart(group, m.horn, -0.27, 1.55, 0.69, 0.12, 0.22, 0.12);
-    animalPart(group, m.horn, 0.27, 1.55, 0.69, 0.12, 0.22, 0.12);
+    animalPart(group, m.body, 0, 0.94, 0, 1.08, 0.82, 1.42);
+    animalPart(group, m.head, 0, 1.2, 0.78, 0.62, 0.62, 0.58);
+    animalPart(group, m.muzzle, 0, 1.03, 1.1, 0.42, 0.28, 0.2);
+    animalPart(group, m.horn, -0.27, 1.57, 0.68, 0.1, 0.2, 0.1);
+    animalPart(group, m.horn, 0.27, 1.57, 0.68, 0.1, 0.2, 0.1);
+    animalPart(group, m.body, -0.39, 1.35, 0.75, 0.2, 0.16, 0.28);
+    animalPart(group, m.body, 0.39, 1.35, 0.75, 0.2, 0.16, 0.28);
+    addAnimalEyes(group, m.eye, 0, 1.29, 1.075, 0.2, 0.075);
+    animalPart(group, m.nostril, -0.1, 1.04, 1.205, 0.045, 0.055, 0.02);
+    animalPart(group, m.nostril, 0.1, 1.04, 1.205, 0.045, 0.055, 0.02);
   } else if (type === 'pig') {
-    animalPart(group, m.body, 0, 0.82, 0, 0.96, 0.72, 1.22);
-    animalPart(group, m.head, 0, 1.08, 0.68, 0.62, 0.62, 0.58);
-    animalPart(group, m.muzzle, 0, 0.98, 1.0, 0.42, 0.3, 0.16);
-    animalPart(group, m.dark, -0.12, 1.0, 1.09, 0.06, 0.1, 0.025);
-    animalPart(group, m.dark, 0.12, 1.0, 1.09, 0.06, 0.1, 0.025);
+    animalPart(group, m.body, 0, 0.83, 0, 0.98, 0.74, 1.22);
+    animalPart(group, m.head, 0, 1.1, 0.68, 0.62, 0.62, 0.58);
+    animalPart(group, m.muzzle, 0, 0.99, 1.0, 0.42, 0.3, 0.16);
+    animalPart(group, m.head, -0.23, 1.47, 0.64, 0.18, 0.24, 0.16);
+    animalPart(group, m.head, 0.23, 1.47, 0.64, 0.18, 0.24, 0.16);
+    addAnimalEyes(group, m.eye, 0, 1.22, 0.99, 0.2, 0.07);
+    animalPart(group, m.nostril, -0.12, 1.0, 1.09, 0.065, 0.1, 0.025);
+    animalPart(group, m.nostril, 0.12, 1.0, 1.09, 0.065, 0.1, 0.025);
   } else if (type === 'sheep') {
-    animalPart(group, m.body, 0, 0.96, 0, 1.05, 0.95, 1.28);
-    animalPart(group, m.wool, -0.34, 1.15, 0.12, 0.42, 0.55, 0.5);
-    animalPart(group, m.wool, 0.34, 1.15, -0.18, 0.42, 0.55, 0.5);
-    animalPart(group, m.head, 0, 1.15, 0.73, 0.54, 0.62, 0.5);
-    animalPart(group, m.muzzle, 0, 0.98, 1.0, 0.3, 0.22, 0.12);
+    animalPart(group, m.body, 0, 0.98, 0, 1.04, 0.96, 1.3);
+    // Touffes cubiques pour rappeler la laine blanche en pixels.
+    for (const [x,y,z] of [[-0.38,1.32,0.2],[0.38,1.32,0.2],[-0.36,1.28,-0.35],[0.36,1.28,-0.35],[0,1.42,-0.2],[0,1.4,0.38]]) {
+      animalPart(group, m.body, x, y, z, 0.34, 0.32, 0.34);
+    }
+    animalPart(group, m.head, 0, 1.18, 0.76, 0.52, 0.62, 0.5);
+    animalPart(group, m.muzzle, 0, 0.99, 1.02, 0.3, 0.22, 0.12);
+    animalPart(group, m.head, -0.31, 1.34, 0.72, 0.18, 0.16, 0.25);
+    animalPart(group, m.head, 0.31, 1.34, 0.72, 0.18, 0.16, 0.25);
+    addAnimalEyes(group, m.eye, 0, 1.25, 1.0, 0.17, 0.065);
   } else {
     animalPart(group, m.body, 0, 0.72, 0, 0.62, 0.72, 0.72);
-    animalPart(group, m.wing, -0.31, 0.79, -0.02, 0.16, 0.42, 0.48);
-    animalPart(group, m.wing, 0.31, 0.79, -0.02, 0.16, 0.42, 0.48);
-    animalPart(group, m.head, 0, 1.16, 0.29, 0.4, 0.4, 0.4);
+    animalPart(group, m.wing, -0.32, 0.78, -0.02, 0.16, 0.42, 0.48);
+    animalPart(group, m.wing, 0.32, 0.78, -0.02, 0.16, 0.42, 0.48);
+    animalPart(group, m.head, 0, 1.17, 0.3, 0.4, 0.4, 0.4);
     animalPart(group, m.beak, 0, 1.08, 0.55, 0.22, 0.13, 0.2);
-    animalPart(group, m.comb, 0, 1.42, 0.27, 0.12, 0.18, 0.12);
+    animalPart(group, m.comb, 0, 1.43, 0.27, 0.13, 0.18, 0.13);
+    animalPart(group, m.wattle, 0, 0.91, 0.53, 0.1, 0.16, 0.08);
+    addAnimalEyes(group, m.eye, 0, 1.22, 0.5, 0.14, 0.055);
   }
-  const legMaterial = m.legs;
   const legX = type === 'chicken' ? 0.18 : (type === 'pig' ? 0.31 : 0.36);
   const legZ = type === 'chicken' ? 0.2 : 0.43;
   const legW = type === 'chicken' ? 0.09 : 0.17;
   const legH = type === 'chicken' ? 0.38 : 0.62;
   for (const x of [-legX, legX]) {
     for (const z of [-legZ, legZ]) {
-      legs.push(animalPart(group, legMaterial, x, legH / 2, z, legW, legH, legW));
+      const leg = animalPart(group, m.legs, x, legH / 2, z, legW, legH, legW);
+      legs.push(leg);
+      if (type !== 'chicken') animalPart(group, m.hoof, x, 0.055, z + 0.015, legW * 1.12, 0.11, legW * 1.12);
     }
   }
   group.userData.legs = legs;
