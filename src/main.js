@@ -84,7 +84,7 @@ const ANIMAL_AUDIO_URLS = {
   sheep: 'https://sfxmint.com/dl/sheep-bleat-02.mp3',
   chicken: 'https://sfxmint.com/dl/hen-cluck-02.mp3'
 };
-const ANIMAL_AUDIO_CUTS = { cow: 1.6, pig: 0.85, sheep: 1.0, chicken: 0.55 };
+const ANIMAL_AUDIO_CUTS = { cow: 2.2, pig: 0.85, sheep: 1.0, chicken: 0.55 };
 // Un seul cri à la fois : évite que les groupes d'animaux deviennent bruyants.
 let nextAnimalCallAt = 0;
 function playAnimalCall(type, distance) {
