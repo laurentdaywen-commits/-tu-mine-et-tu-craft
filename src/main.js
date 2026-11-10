@@ -9,6 +9,74 @@ const WORLD_MAX = 31;
 const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
+
+// Effets sonores procéduraux : aucun fichier audio externe nécessaire.
+let audioContext = null;
+let noiseBuffer = null;
+function ensureAudio() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+  if (!audioContext) {
+    audioContext = new AudioCtor();
+    noiseBuffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * 0.2), audioContext.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  }
+  if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+  return audioContext;
+}
+function playSound(kind, material = 'stone') {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const output = ctx.createGain();
+  output.gain.setValueAtTime(0.0001, now);
+  output.connect(ctx.destination);
+  const tone = (frequency, endFrequency, duration, volume, wave = 'sine', delay = 0) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = wave;
+    osc.frequency.setValueAtTime(frequency, now + delay);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(30, endFrequency), now + delay + duration);
+    gain.gain.setValueAtTime(volume, now + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+    osc.connect(gain); gain.connect(output);
+    osc.start(now + delay); osc.stop(now + delay + duration + 0.02);
+  };
+  const noise = (duration, volume, frequency = 1500) => {
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    source.buffer = noiseBuffer;
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(frequency, now);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    source.connect(filter); filter.connect(gain); gain.connect(output);
+    source.start(now); source.stop(now + duration);
+  };
+  if (kind === 'mine') {
+    const pitch = material === 'leaves' ? 2300 : material === 'wood' ? 850 : material === 'stone' ? 520 : 1250;
+    noise(0.13, 0.22, pitch);
+    tone(pitch, pitch * 0.42, 0.11, 0.12, 'triangle');
+  } else if (kind === 'place') {
+    tone(material === 'wood' ? 240 : 390, material === 'wood' ? 110 : 180, 0.12, 0.16, 'triangle');
+    tone(620, 360, 0.07, 0.06, 'sine', 0.025);
+  } else if (kind === 'jump') {
+    tone(190, 520, 0.18, 0.13, 'sine');
+  } else if (kind === 'step') {
+    noise(0.055, 0.075, 420);
+    tone(105, 65, 0.06, 0.035, 'sine');
+  } else if (kind === 'select') {
+    tone(520, 760, 0.07, 0.07, 'sine');
+  }
+}
+function jumpPlayer() {
+  if (!onGround) return;
+  verticalVelocity = 7;
+  playSound('jump');
+}
+
 scene.background = new THREE.Color(0x87c8f0);
 scene.fog = new THREE.Fog(0x87c8f0, 38, 100);
 
@@ -308,6 +376,7 @@ function removeBlockAt(x, y, z) {
   if (!minedType) return false;
   // Les blocs ordinaires sont récoltés comme blocs ; les minerais donnent uniquement leur ressource.
   addToInventory(minedType);
+  playSound('mine', minedType);
   blocks.delete(keyOf(x, y, z));
   rebuildAt(x, z);
   return true;
@@ -421,6 +490,7 @@ let touchLook = null;
 
 function selectBlock(type) {
   if (!materials[type]) return;
+  if (selected !== type) playSound('select');
   selected = type;
   document.querySelectorAll('.slot').forEach(button => {
     button.classList.toggle('selected', button.dataset.block === type);
@@ -471,7 +541,7 @@ function placeBlock() {
   const nx = x + Math.round(normal.x), ny = y + Math.round(normal.y), nz = z + Math.round(normal.z);
   const playerBlock = new THREE.Vector3(nx, ny, nz);
   if (camera.position.distanceTo(playerBlock) < 1.35) return;
-  addBlock(nx, ny, nz, selected);
+  if (addBlock(nx, ny, nz, selected)) playSound('place', selected);
 }
 function targetBlockNormal() {
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -489,7 +559,7 @@ document.querySelector('#break').addEventListener('pointerdown', event => { even
 document.querySelector('#place').addEventListener('pointerdown', event => { event.preventDefault(); placeBlock(); });
 document.querySelector('#jump').addEventListener('pointerdown', event => {
   event.preventDefault();
-  if (onGround) verticalVelocity = 7;
+  jumpPlayer();
 });
 
 const joy = document.querySelector('#joystick');
@@ -535,6 +605,7 @@ lookZone.addEventListener('pointercancel', () => { touchLook = null; });
 
 const clock = new THREE.Clock();
 let lastChunkId = '';
+let stepTimer = 0;
 function update(dt) {
   const forward = Number(Boolean(keys.KeyW || keys.ArrowUp)) - Number(Boolean(keys.KeyS || keys.ArrowDown)) - joystick.y;
   const side = Number(Boolean(keys.KeyA || keys.ArrowLeft)) - Number(Boolean(keys.KeyD || keys.ArrowRight)) - joystick.x;
@@ -560,7 +631,7 @@ function update(dt) {
     refreshChunksAroundPlayer();
   }
 
-  if (keys.Space && onGround) verticalVelocity = 7;
+  if (keys.Space && onGround) jumpPlayer();
   verticalVelocity -= 19 * dt;
   camera.position.y += verticalVelocity * dt;
 
@@ -576,6 +647,12 @@ function update(dt) {
     onGround = true;
   } else {
     onGround = false;
+  }
+  if (onGround && (Math.abs(forward) + Math.abs(side)) > 0.2) {
+    stepTimer += dt;
+    if (stepTimer >= 0.38) { playSound('step'); stepTimer = 0; }
+  } else {
+    stepTimer = 0;
   }
 }
 function animate() {
