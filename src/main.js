@@ -82,14 +82,21 @@ const MINING_AUDIO_URLS = {
   break: 'https://sfxmint.com/dl/rock-break-08.mp3',
   crumble: 'https://sfxmint.com/dl/rock-crumbling-04.mp3'
 };
-function playRemoteMiningSound(name, volume = 0.4, delay = 0) {
+function playRemoteMiningSound(name, volume = 0.4, delay = 0, maxDuration = 0.28) {
   const url = MINING_AUDIO_URLS[name];
   if (!url) return;
   const play = () => {
     const audio = new Audio(url);
     audio.preload = 'auto';
     audio.volume = Math.max(0, Math.min(1, volume));
-    audio.play().catch(error => console.warn('Son de minage indisponible :', name, error));
+    // Accélère légèrement le son et coupe sa queue : impacts courts façon Minecraft.
+    audio.playbackRate = 1.55;
+    audio.play().then(() => {
+      window.setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }, maxDuration * 1000);
+    }).catch(error => console.warn('Son de minage indisponible :', name, error));
   };
   if (delay > 0) window.setTimeout(play, delay * 1000);
   else play();
@@ -129,12 +136,12 @@ function playSound(kind, material = 'stone') {
     else if (material === 'leaves') {
       // Les feuilles restent discrètes, sans son métallique de pioche.
     } else if (['coal', 'iron', 'gold', 'diamond'].includes(material)) {
-      playRemoteMiningSound('ore', 0.52);
-      playRemoteMiningSound('break', 0.28, 0.12);
+      playRemoteMiningSound('ore', 0.48, 0, 0.24);
+      playRemoteMiningSound('break', 0.30, 0.07, 0.22);
     } else {
-      playRemoteMiningSound('pickaxe', 0.38);
-      playRemoteMiningSound('break', 0.42, 0.12);
-      playRemoteMiningSound('crumble', 0.30, 0.24);
+      playRemoteMiningSound('pickaxe', 0.34, 0, 0.20);
+      playRemoteMiningSound('break', 0.38, 0.06, 0.22);
+      playRemoteMiningSound('crumble', 0.24, 0.13, 0.18);
     }
   } else if (kind === 'place') {
     playAudioAsset('place', 0.5);
