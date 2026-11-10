@@ -76,15 +76,15 @@ function playAudioAsset(name, volume = 0.45, delay = 0, queueIfLoading = true) {
 }
 
 // Sons d'animaux du pack Animal Calls de SFXMint (CC0 1.0).
-// Fichiers MP3 directs et stables ; les appels sont volontairement raccourcis
-// pour retrouver le rythme bref des bruitages de Minecraft.
+// Fichiers MP3 directs et stables ; les appels sont ajustés pour garder
+// des bruitages courts, tout en laissant respirer le meuglement de la vache.
 const ANIMAL_AUDIO_URLS = {
   cow: 'https://sfxmint.com/dl/cow-moo-02.mp3',
   pig: 'https://sfxmint.com/dl/pig-oink-02.mp3',
   sheep: 'https://sfxmint.com/dl/sheep-bleat-02.mp3',
   chicken: 'https://sfxmint.com/dl/hen-cluck-02.mp3'
 };
-const ANIMAL_AUDIO_CUTS = { cow: 1.25, pig: 0.85, sheep: 1.0, chicken: 0.55 };
+const ANIMAL_AUDIO_CUTS = { cow: 1.6, pig: 0.85, sheep: 1.0, chicken: 0.55 };
 // Un seul cri à la fois : évite que les groupes d'animaux deviennent bruyants.
 let nextAnimalCallAt = 0;
 function playAnimalCall(type, distance) {
