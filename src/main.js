@@ -30,7 +30,7 @@ function playSound(kind, material = 'stone') {
   if (!ctx) return;
   const now = ctx.currentTime;
   const output = ctx.createGain();
-  output.gain.setValueAtTime(0.0001, now);
+  output.gain.setValueAtTime(1, now);
   output.connect(ctx.destination);
   const tone = (frequency, endFrequency, duration, volume, wave = 'sine', delay = 0) => {
     const osc = ctx.createOscillator();
