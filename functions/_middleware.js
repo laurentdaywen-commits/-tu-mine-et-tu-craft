@@ -12,7 +12,6 @@ function constantTimeEqual(a, b) {
 }
 
 export async function onRequest({ request, env, next }) {
-  // Fail closed if the secrets have not been configured in Cloudflare.
   if (!env.GAME_USERNAME || !env.GAME_PASSWORD) {
     return new Response("Protection du jeu non configuree. Contactez l'administrateur.", {
       status: 503,
@@ -21,7 +20,7 @@ export async function onRequest({ request, env, next }) {
   }
 
   const authorization = request.headers.get("Authorization") || "";
-  const match = authorization.match(/^Basic\\s+(.+)$/i);
+  const match = authorization.match(/^Basic\s+(.+)$/i);
 
   if (match) {
     try {
@@ -47,7 +46,7 @@ export async function onRequest({ request, env, next }) {
         }
       }
     } catch {
-      // Invalid credentials are handled below with the same response.
+      // Invalid credentials are handled below.
     }
   }
 
