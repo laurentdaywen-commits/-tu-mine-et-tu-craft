@@ -4,8 +4,8 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 // Monde voxel organisé en chunks. Les blocs d'un chunk sont regroupés par matériau
 // dans des InstancedMesh : beaucoup moins d'appels de rendu qu'un Mesh par bloc.
 const CHUNK_SIZE = 8;
-const WORLD_MIN = -32;
-const WORLD_MAX = 31;
+const WORLD_MIN = -64;
+const WORLD_MAX = 63;
 const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
@@ -467,8 +467,8 @@ function rebuildAt(x, z) {
 function refreshChunksAroundPlayer() {
   const [playerChunkX, playerChunkZ] = chunkOf(camera.position.x, camera.position.z);
   const wanted = new Set();
-  for (let cx = Math.max(-4, playerChunkX - RENDER_DISTANCE); cx <= Math.min(3, playerChunkX + RENDER_DISTANCE); cx++) {
-    for (let cz = Math.max(-4, playerChunkZ - RENDER_DISTANCE); cz <= Math.min(3, playerChunkZ + RENDER_DISTANCE); cz++) {
+  for (let cx = Math.max(Math.floor(WORLD_MIN / CHUNK_SIZE), playerChunkX - RENDER_DISTANCE); cx <= Math.min(Math.floor(WORLD_MAX / CHUNK_SIZE), playerChunkX + RENDER_DISTANCE); cx++) {
+    for (let cz = Math.max(Math.floor(WORLD_MIN / CHUNK_SIZE), playerChunkZ - RENDER_DISTANCE); cz <= Math.min(Math.floor(WORLD_MAX / CHUNK_SIZE), playerChunkZ + RENDER_DISTANCE); cz++) {
       const id = chunkKey(cx, cz);
       wanted.add(id);
       if (!chunks.has(id)) rebuildChunk(cx, cz);
@@ -785,7 +785,7 @@ function updateAnimals(dt) {
 }
 
 
-// Génération du terrain 64 x 64 et de ses couches souterraines.
+// Génération du terrain 128 x 128 et de ses couches souterraines.
 for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
     const h = heightAt(x, z);
@@ -826,8 +826,8 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
 }
 
 // Forêts déterministes, plus naturelles et adaptées aux pentes.
-for (let tx = -27; tx <= 27; tx += 6) {
-  for (let tz = -27; tz <= 27; tz += 7) {
+for (let tx = -59; tx <= 59; tx += 6) {
+  for (let tz = -59; tz <= 59; tz += 7) {
     const treeRoll = Math.abs(Math.sin(tx * 127.1 + tz * 311.7) * 43758.5453) % 1;
     if (treeRoll > 0.34) continue;
     const base = heightAt(tx, tz);
