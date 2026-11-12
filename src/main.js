@@ -557,8 +557,8 @@ function canOccupyPlayer(x, z, feetY) {
 
 // Animaux pacifiques : modèles cubiques légers et déplacements autonomes.
 const animals = [];
-// 16 animaux maximum, répartis dans les 16 secteurs de la carte.
-const MAX_ANIMALS = 16;
+// 12 animaux maximum, répartis dans les secteurs de la carte.
+const MAX_ANIMALS = 12;
 // Textures animales pixelisées 16x16, dans l'esprit des textures Minecraft.
 const animalTextureCache = new Map();
 function makeAnimalTexture(type, part) {
@@ -727,8 +727,8 @@ function makeAnimal(type) {
     animalPart(group, m.wattle, 0, 0.91, 0.53, 0.1, 0.16, 0.08);
     addAnimalEyes(group, m.eye, 0, 1.22, 0.5, 0.14, 0.055);
   }
-  const legX = type === 'chicken' ? 0.18 : (type === 'pig' ? 0.31 : 0.36);
-  const legZ = type === 'chicken' ? 0.2 : 0.43;
+  const legX = type === 'chicken' ? 0.12 : (type === 'pig' ? 0.31 : 0.36);
+  const legZ = type === 'chicken' ? 0 : 0.43;
   const legW = type === 'chicken' ? 0.09 : 0.17;
   const legH = type === 'chicken' ? 0.38 : 0.62;
   for (const x of [-legX, legX]) {
@@ -777,7 +777,6 @@ function spawnAnimals() {
     [sectors[i], sectors[j]] = [sectors[j], sectors[i]];
   }
 
-  let sheepPlaced = false;
   for (const sector of sectors) {
     if (animals.length >= MAX_ANIMALS) break;
     const minX = WORLD_MIN + sector.sx * 32;
@@ -789,7 +788,8 @@ function spawnAnimals() {
       if (ground === null) continue;
       if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 12)) continue;
 
-      const type = !sheepPlaced ? 'sheep' : types[Math.floor(Math.random() * types.length)];
+      // Les quatre espèces ont exactement la même chance d'apparaître.
+      const type = types[Math.floor(Math.random() * types.length)];
       const group = makeAnimal(type);
       group.position.set(Math.round(x), ground, Math.round(z));
       group.rotation.y = Math.random() * Math.PI * 2;
@@ -800,23 +800,8 @@ function spawnAnimals() {
         callTimer: 9 + Math.random() * 17,
         speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
       });
-      if (type === 'sheep') sheepPlaced = true;
       break;
     }
-  }
-
-  // Garantit la présence d'un mouton même si le premier secteur valide a été rare.
-  if (!sheepPlaced && animals.length) {
-    const first = animals[0];
-    const group = makeAnimal('sheep');
-    group.position.copy(first.group.position);
-    group.rotation.y = first.group.rotation.y;
-    scene.remove(first.group);
-    scene.add(group);
-    first.group = group;
-    first.type = 'sheep';
-    first.targetX = group.position.x;
-    first.targetZ = group.position.z;
   }
 }
 function updateAnimals(dt) {
