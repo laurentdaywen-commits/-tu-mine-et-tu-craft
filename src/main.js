@@ -557,7 +557,8 @@ function canOccupyPlayer(x, z, feetY) {
 
 // Animaux pacifiques : modèles cubiques légers et déplacements autonomes.
 const animals = [];
-const MAX_ANIMALS = 12;
+// 16 animaux maximum, répartis dans les 16 secteurs de la carte.
+const MAX_ANIMALS = 16;
 // Textures animales pixelisées 16x16, dans l'esprit des textures Minecraft.
 const animalTextureCache = new Map();
 function makeAnimalTexture(type, part) {
@@ -765,29 +766,57 @@ function animalGroundAt(x, z) {
 }
 function spawnAnimals() {
   const types = ['cow', 'pig', 'sheep', 'chicken'];
-  let attempts = 0;
-  while (animals.length < MAX_ANIMALS && attempts < 700) {
-    attempts++;
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 7 + Math.random() * 20;
-    const x = camera.position.x + Math.cos(angle) * distance;
-    const z = camera.position.z + Math.sin(angle) * distance;
-    const ground = animalGroundAt(x, z);
-    if (ground === null) continue;
-    if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 3.2)) continue;
-    // Garantit qu'un mouton soit présent dès le premier groupe d'animaux.
-    const hasSheep = animals.some(animal => animal.type === 'sheep');
-    const type = !hasSheep ? 'sheep' : types[Math.floor(Math.random() * types.length)];
-    const group = makeAnimal(type);
-    group.position.set(Math.round(x), ground, Math.round(z));
-    group.rotation.y = Math.random() * Math.PI * 2;
+  // La carte 128 x 128 est divisée en 16 secteurs de 32 x 32 blocs.
+  // On mélange les secteurs et on place au plus un animal dans chacun.
+  const sectors = [];
+  for (let sx = 0; sx < 4; sx++) {
+    for (let sz = 0; sz < 4; sz++) sectors.push({ sx, sz });
+  }
+  for (let i = sectors.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [sectors[i], sectors[j]] = [sectors[j], sectors[i]];
+  }
+
+  let sheepPlaced = false;
+  for (const sector of sectors) {
+    if (animals.length >= MAX_ANIMALS) break;
+    const minX = WORLD_MIN + sector.sx * 32;
+    const minZ = WORLD_MIN + sector.sz * 32;
+    for (let attempt = 0; attempt < 180; attempt++) {
+      const x = minX + 2 + Math.random() * 28;
+      const z = minZ + 2 + Math.random() * 28;
+      const ground = animalGroundAt(x, z);
+      if (ground === null) continue;
+      if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 12)) continue;
+
+      const type = !sheepPlaced ? 'sheep' : types[Math.floor(Math.random() * types.length)];
+      const group = makeAnimal(type);
+      group.position.set(Math.round(x), ground, Math.round(z));
+      group.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(group);
+      animals.push({
+        group, type, targetX: group.position.x, targetZ: group.position.z,
+        timer: Math.random() * 3, phase: Math.random() * Math.PI * 2,
+        callTimer: 9 + Math.random() * 17,
+        speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
+      });
+      if (type === 'sheep') sheepPlaced = true;
+      break;
+    }
+  }
+
+  // Garantit la présence d'un mouton même si le premier secteur valide a été rare.
+  if (!sheepPlaced && animals.length) {
+    const first = animals[0];
+    const group = makeAnimal('sheep');
+    group.position.copy(first.group.position);
+    group.rotation.y = first.group.rotation.y;
+    scene.remove(first.group);
     scene.add(group);
-    animals.push({
-      group, type, targetX: group.position.x, targetZ: group.position.z,
-      timer: Math.random() * 3, phase: Math.random() * Math.PI * 2,
-      callTimer: 9 + Math.random() * 17,
-      speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
-    });
+    first.group = group;
+    first.type = 'sheep';
+    first.targetX = group.position.x;
+    first.targetZ = group.position.z;
   }
 }
 function updateAnimals(dt) {
