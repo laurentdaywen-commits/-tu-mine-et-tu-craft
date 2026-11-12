@@ -197,6 +197,9 @@ scene.background = new THREE.Color(0x87c8f0);
 scene.fog = new THREE.Fog(0x87c8f0, 38, 100);
 
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 160);
+// La caméra doit appartenir à la scène pour que ses objets enfants
+// (bras et bloc tenu) soient également dessinés par Three.js.
+scene.add(camera);
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.setSize(innerWidth, innerHeight);
