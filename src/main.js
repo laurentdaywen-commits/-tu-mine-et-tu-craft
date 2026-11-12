@@ -731,10 +731,12 @@ function makeAnimal(type) {
   const legZ = type === 'chicken' ? 0 : 0.43;
   const legW = type === 'chicken' ? 0.09 : 0.17;
   const legH = type === 'chicken' ? 0.38 : 0.62;
-  for (const x of [-legX, legX]) {
-    // Les poules n'ont que deux pattes : une de chaque côté.
+  const legXs = type === 'chicken' ? [0] : [-legX, legX];
+  for (const x of legXs) {
+    // Les deux pattes de la poule sont alignées sous l'axe central du corps,
+    // séparées dans le sens de la longueur.
     // Les autres animaux ont quatre pattes, réparties à l'avant et à l'arrière.
-    const legPositions = type === 'chicken' ? [0.20] : [-legZ, legZ];
+    const legPositions = type === 'chicken' ? [-0.20, 0.20] : [-legZ, legZ];
     for (const z of legPositions) {
       if (type === 'sheep') {
         const upper = animalPart(group, m.body, x, 0.34, z, 0.17, 0.32, 0.17);
