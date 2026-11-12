@@ -398,6 +398,31 @@ const materials = {
 
 const blockNames = Object.keys(materials);
 
+// Touffes d'herbe décoratives : texture pixelisée transparente et plans croisés.
+const tuftCanvas = document.createElement('canvas');
+tuftCanvas.width = tuftCanvas.height = 16;
+const tuftCtx = tuftCanvas.getContext('2d');
+tuftCtx.fillStyle = '#4f8f2d';
+tuftCtx.fillRect(7, 8, 2, 8);
+tuftCtx.fillStyle = '#6eae3d';
+tuftCtx.fillRect(6, 5, 2, 7);
+tuftCtx.fillRect(8, 3, 2, 9);
+tuftCtx.fillRect(10, 7, 2, 6);
+tuftCtx.fillStyle = '#83c94b';
+tuftCtx.fillRect(5, 4, 2, 3);
+tuftCtx.fillRect(8, 1, 2, 3);
+tuftCtx.fillRect(11, 5, 2, 3);
+const tuftTexture = new THREE.CanvasTexture(tuftCanvas);
+tuftTexture.magFilter = THREE.NearestFilter;
+tuftTexture.minFilter = THREE.NearestFilter;
+tuftTexture.colorSpace = THREE.SRGBColorSpace;
+tuftTexture.generateMipmaps = false;
+const tuftGeometry = new THREE.PlaneGeometry(0.58, 0.72);
+const tuftMaterial = new THREE.MeshLambertMaterial({
+  map: tuftTexture, transparent: true, alphaTest: 0.35,
+  side: THREE.DoubleSide, depthWrite: false
+});
+
 // Bras du joueur en vue subjective, attaché à la caméra comme dans Minecraft.
 const firstPersonArm = new THREE.Group();
 firstPersonArm.position.set(0.43, -0.39, -0.72);
@@ -566,6 +591,45 @@ function rebuildChunk(cx, cz) {
     mesh.computeBoundingSphere();
     scene.add(mesh);
     meshes.push(mesh);
+  }
+  // Herbe haute : touffes générées de façon pseudo-aléatoire sur les surfaces
+  // d'herbe libres. La graine du monde garantit une répartition stable pendant la partie.
+  const tuftMatrices = [];
+  for (let x = minX; x < minX + CHUNK_SIZE; x++) {
+    for (let z = minZ; z < minZ + CHUNK_SIZE; z++) {
+      let topY = -1;
+      for (let y = 24; y >= 0; y--) {
+        if (getBlock(x, y, z)) { topY = y; break; }
+      }
+      if (topY < 0 || getBlock(x, topY, z) !== 'grass' || getBlock(x, topY + 1, z)) continue;
+      // Environ une case sur cinq reçoit une touffe, avec des variations de taille et d'orientation.
+      const roll = worldHash(x, z, 707);
+      if (roll < 0.79) continue;
+      const rotation = worldHash(x, z, 709) * Math.PI * 2;
+      const scale = 0.78 + worldHash(x, z, 711) * 0.42;
+      for (let blade = 0; blade < 3; blade++) {
+        dummy.position.set(
+          x + (worldHash(x, z, 713) - 0.5) * 0.24,
+          topY + 0.36 * scale,
+          z + (worldHash(x, z, 719) - 0.5) * 0.24
+        );
+        dummy.rotation.set(0, rotation + blade * Math.PI / 3, 0);
+        dummy.scale.set(scale, scale, scale);
+        dummy.updateMatrix();
+        tuftMatrices.push(dummy.matrix.clone());
+      }
+    }
+  }
+  if (tuftMatrices.length) {
+    const tufts = new THREE.InstancedMesh(tuftGeometry, tuftMaterial, tuftMatrices.length);
+    tufts.name = 'grass-tufts';
+    tufts.castShadow = false;
+    tufts.receiveShadow = true;
+    tufts.frustumCulled = false;
+    tuftMatrices.forEach((matrix, index) => tufts.setMatrixAt(index, matrix));
+    tufts.instanceMatrix.needsUpdate = true;
+    scene.add(tufts);
+    meshes.push(tufts);
   }
   chunks.set(id, meshes);
 }
