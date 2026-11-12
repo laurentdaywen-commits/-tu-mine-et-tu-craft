@@ -601,10 +601,11 @@ function makeAnimalTexture(type, part) {
     for (let x = 0; x < 16; x++) {
       seed = (seed * 9301 + 49297) % 233280;
       const roll = seed / 233280;
-      if (roll > 0.79) {
+      const sheepWool = type === 'sheep' && part === 'body';
+      if (sheepWool ? roll > 0.965 : roll > 0.79) {
         ctx.fillStyle = p[1];
         ctx.fillRect(x, y, 1, 1);
-      } else if (roll < 0.12) {
+      } else if (sheepWool ? roll < 0.025 : roll < 0.12) {
         ctx.fillStyle = p[2];
         ctx.fillRect(x, y, 1, 1);
       }
@@ -619,9 +620,9 @@ function makeAnimalTexture(type, part) {
     }
   }
   if (type === 'sheep' && part === 'body') {
-    for (let i = 0; i < 28; i++) {
-      const x = (i * 7 + 3) % 16, y = (i * 11 + 5) % 16;
-      ctx.fillStyle = i % 2 ? p[1] : p[2];
+    // Laine presque blanche, avec seulement quelques pixels gris très discrets.
+    for (const [x,y] of [[2,3],[11,2],[6,8],[14,12],[3,14],[9,5]]) {
+      ctx.fillStyle = p[1];
       ctx.fillRect(x, y, 1, 1);
     }
   }
@@ -698,27 +699,23 @@ function makeAnimal(type) {
     animalPart(group, m.nostril, -0.12, 1.0, 1.09, 0.065, 0.1, 0.025);
     animalPart(group, m.nostril, 0.12, 1.0, 1.09, 0.065, 0.1, 0.025);
   } else if (type === 'sheep') {
-    // Mouton classique Minecraft : grand volume de laine cubique,
-    // tête grise avancée, face beige/brune et quatre pattes à sabots foncés.
-    animalPart(group, m.body, 0, 1.08, -0.02, 1.18, 1.08, 1.52);
-    // Gros volumes de laine qui donnent une silhouette rectangulaire et épaisse.
+    // Silhouette proche du mouton Minecraft : corps de laine compact,
+    // tête avancée et quatre petites pattes droites.
+    animalPart(group, m.body, 0, 1.02, -0.04, 1.02, 0.98, 1.38);
+    // Quelques petits volumes carrés adoucissent le contour sans déformer le corps.
     for (const [x,y,z,sx,sy,sz] of [
-      [-0.43,1.48,0.42,0.42,0.42,0.48],[0.43,1.48,0.42,0.42,0.42,0.48],
-      [-0.43,1.48,-0.43,0.42,0.42,0.48],[0.43,1.48,-0.43,0.42,0.42,0.48],
-      [0,1.62,-0.05,0.48,0.34,0.55],
-      [-0.56,1.08,0.02,0.22,0.58,0.72],[0.56,1.08,0.02,0.22,0.58,0.72]
+      [-0.40,1.43,0.36,0.24,0.22,0.28],[0.40,1.43,0.36,0.24,0.22,0.28],
+      [-0.40,1.43,-0.40,0.24,0.22,0.28],[0.40,1.43,-0.40,0.24,0.22,0.28],
+      [0,1.49,-0.04,0.30,0.16,0.38]
     ]) animalPart(group, m.body, x,y,z,sx,sy,sz);
-    // Tête avancée : crâne gris clair, bande brune autour des yeux,
-    // face beige, yeux noirs et museau rose.
-    animalPart(group, m.head, 0, 1.20, 0.98, 0.58, 0.66, 0.56);
-    animalPart(group, m.face, 0, 1.19, 1.272, 0.43, 0.39, 0.035);
-    animalPart(group, m.dark, -0.145, 1.285, 1.294, 0.105, 0.105, 0.025);
-    animalPart(group, m.dark, 0.145, 1.285, 1.294, 0.105, 0.105, 0.025);
-    animalPart(group, m.muzzle, 0, 0.99, 1.305, 0.30, 0.25, 0.10);
-    // Oreilles grises visibles de chaque côté de la tête.
-    animalPart(group, m.head, -0.36, 1.34, 0.99, 0.22, 0.16, 0.30);
-    animalPart(group, m.head, 0.36, 1.34, 0.99, 0.22, 0.16, 0.30);
-    addAnimalEyes(group, m.eye, 0, 1.285, 1.315, 0.145, 0.065);
+    // Tête gris clair, face beige/brune, yeux noirs et petit museau rose.
+    animalPart(group, m.head, 0, 1.12, 0.91, 0.56, 0.60, 0.56);
+    animalPart(group, m.face, 0, 1.12, 1.195, 0.43, 0.38, 0.035);
+    animalPart(group, m.muzzle, 0, 0.91, 1.225, 0.29, 0.23, 0.10);
+    // Oreilles courtes, intégrées à la tête.
+    animalPart(group, m.head, -0.34, 1.25, 0.91, 0.18, 0.13, 0.24);
+    animalPart(group, m.head, 0.34, 1.25, 0.91, 0.18, 0.13, 0.24);
+    addAnimalEyes(group, m.eye, 0, 1.17, 1.225, 0.145, 0.065);
   } else {
     animalPart(group, m.body, 0, 0.72, 0, 0.62, 0.72, 0.72);
     animalPart(group, m.wing, -0.32, 0.78, -0.02, 0.16, 0.42, 0.48);
@@ -739,9 +736,9 @@ function makeAnimal(type) {
     const legPositions = type === 'chicken' ? [0.20] : [-legZ, legZ];
     for (const z of legPositions) {
       if (type === 'sheep') {
-        const upper = animalPart(group, m.body, x, 0.43, z, 0.205, 0.48, 0.205);
-        animalPart(group, m.legs, x, 0.16, z, 0.205, 0.34, 0.205);
-        animalPart(group, m.dark, x, 0.025, z + 0.012, 0.215, 0.07, 0.215);
+        const upper = animalPart(group, m.body, x, 0.34, z, 0.17, 0.32, 0.17);
+        animalPart(group, m.legs, x, 0.13, z, 0.17, 0.26, 0.17);
+        animalPart(group, m.dark, x, 0.025, z + 0.012, 0.18, 0.05, 0.18);
         legs.push(upper);
       } else {
         const leg = animalPart(group, m.legs, x, legH / 2, z, legW, legH, legW);
