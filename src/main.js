@@ -256,23 +256,62 @@ function makeBlockTexture(type, face) {
   // Fonds et motifs spécifiques à chaque bloc.
   if (type === 'grass') {
     if (face === 2) {
-      pixel(0, 0, '#79b83b', 16, 16);
-      fillNoise(['#70ad35', '#83c447', '#659d30', '#8bc94b', '#6da936'], 82);
-      for (let i = 0; i < 10; i++) pixel(Math.floor(random() * 16), Math.floor(random() * 16), '#5f982e');
-    } else if (face === 3) {
-      pixel(0, 0, '#866043', 16, 16);
-      fillNoise(palettes.dirt, 48);
-    } else {
-      // Côté du bloc : couche d'herbe irrégulière au-dessus de la terre.
-      pixel(0, 0, '#866043', 16, 16);
-      fillNoise(palettes.dirt, 34);
-      pixel(0, 0, '#79b83b', 16, 3);
-      pixel(0, 3, '#70ad35', 16, 1);
-      for (let x = 0; x < 16; x++) {
-        const fringe = random() > 0.68 ? 1 : 0;
-        if (fringe) pixel(x, 4, random() > 0.5 ? '#659d30' : '#70ad35');
+      // Dessus : mosaïque 16x16 en petits carrés verts, comme le bloc
+      // d'herbe classique de Minecraft (motif irrégulier, sans dégradé).
+      const top = [
+        '0011222200112233',
+        '0011222200112233',
+        '1100223311002233',
+        '1100223311002233',
+        '2233110022331100',
+        '2233110022331100',
+        '3322110033221100',
+        '3322110033221100',
+        '0011332200113322',
+        '0011332200113322',
+        '2211003322110033',
+        '2211003322110033',
+        '1133220011332200',
+        '1133220011332200',
+        '0033221100332211',
+        '0033221100332211'
+      ];
+      const greens = ['#315f2e', '#3d7335', '#477f3b', '#548d43'];
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          const index = Number(top[y][x]);
+          pixel(x, y, greens[index]);
+        }
       }
-      for (let i = 0; i < 12; i++) pixel(Math.floor(random() * 16), 5 + Math.floor(random() * 11), random() > 0.5 ? '#704c34' : '#9b704d');
+      // Quelques nuances isolées gardent l'aspect pixelisé naturel.
+      for (let i = 0; i < 15; i++) {
+        const x = Math.floor(random() * 16), y = Math.floor(random() * 16);
+        pixel(x, y, random() > 0.5 ? '#5b9849' : '#294f29');
+      }
+    } else if (face === 3) {
+      pixel(0, 0, '#795438', 16, 16);
+      fillNoise(['#866043', '#795438', '#906747', '#704c34', '#9b704d'], 58, 1, 2);
+    } else {
+      // Flanc : terre brun pixelisée, petites inclusions gris bleuté,
+      // puis couche d'herbe irrégulière qui descend par mèches carrées.
+      const dirt = ['#795438', '#866043', '#906747', '#704c34', '#9b704d', '#67452f'];
+      pixel(0, 0, '#795438', 16, 16);
+      fillNoise(dirt, 68, 1, 3);
+      for (let i = 0; i < 7; i++) {
+        const x = Math.floor(random() * 15), y = 5 + Math.floor(random() * 10);
+        pixel(x, y, '#667783', 1 + (random() > 0.65 ? 1 : 0), 1);
+      }
+      const grass = ['#315f2e', '#3d7335', '#477f3b', '#548d43'];
+      const fringe = [4,3,4,5,3,4,6,4,3,5,4,6,3,4,5,3];
+      for (let x = 0; x < 16; x++) {
+        const drop = fringe[x] + (random() > 0.82 ? 1 : 0);
+        pixel(x, 0, grass[Math.floor(random() * grass.length)], 1, drop);
+        if (drop > 2) pixel(x, drop - 1, random() > 0.5 ? '#315f2e' : '#3d7335');
+      }
+      // Liseré sombre sous le gazon et petites racines carrées.
+      for (let x = 0; x < 16; x++) {
+        if (random() > 0.55) pixel(x, fringe[x], '#563d2b');
+      }
     }
   } else if (type === 'dirt') {
     pixel(0, 0, '#866043', 16, 16);
