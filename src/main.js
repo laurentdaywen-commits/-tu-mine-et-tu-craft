@@ -734,7 +734,10 @@ function makeAnimal(type) {
   const legW = type === 'chicken' ? 0.09 : 0.17;
   const legH = type === 'chicken' ? 0.38 : 0.62;
   for (const x of [-legX, legX]) {
-    for (const z of [-legZ, legZ]) {
+    // Les poules n'ont que deux pattes : une de chaque côté.
+    // Les autres animaux ont quatre pattes, réparties à l'avant et à l'arrière.
+    const legPositions = type === 'chicken' ? [0.20] : [-legZ, legZ];
+    for (const z of legPositions) {
       if (type === 'sheep') {
         const upper = animalPart(group, m.body, x, 0.43, z, 0.205, 0.48, 0.205);
         animalPart(group, m.legs, x, 0.16, z, 0.205, 0.34, 0.205);
@@ -775,7 +778,9 @@ function spawnAnimals() {
     const ground = animalGroundAt(x, z);
     if (ground === null) continue;
     if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 3.2)) continue;
-    const type = types[Math.floor(Math.random() * types.length)];
+    // Garantit qu'un mouton soit présent dès le premier groupe d'animaux.
+    const hasSheep = animals.some(animal => animal.type === 'sheep');
+    const type = !hasSheep ? 'sheep' : types[Math.floor(Math.random() * types.length)];
     const group = makeAnimal(type);
     group.position.set(Math.round(x), ground, Math.round(z));
     group.rotation.y = Math.random() * Math.PI * 2;
