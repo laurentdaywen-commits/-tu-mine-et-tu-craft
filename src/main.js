@@ -4,8 +4,8 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 // Monde voxel organisé en chunks. Les blocs d'un chunk sont regroupés par matériau
 // dans des InstancedMesh : beaucoup moins d'appels de rendu qu'un Mesh par bloc.
 const CHUNK_SIZE = 8;
-const WORLD_MIN = -64;
-const WORLD_MAX = 63;
+const WORLD_MIN = -128;
+const WORLD_MAX = 127;
 const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
@@ -885,11 +885,11 @@ function animalGroundAt(x, z) {
 }
 function spawnAnimals() {
   const types = ['cow', 'pig', 'sheep', 'chicken'];
-  // La carte 128 x 128 est divisée en 16 secteurs de 32 x 32 blocs.
+  // La carte 256 x 256 est divisée en 64 secteurs de 32 x 32 blocs.
   // On mélange les secteurs et on place au plus un animal dans chacun.
   const sectors = [];
-  for (let sx = 0; sx < 4; sx++) {
-    for (let sz = 0; sz < 4; sz++) sectors.push({ sx, sz });
+  for (let sx = 0; sx < 8; sx++) {
+    for (let sz = 0; sz < 8; sz++) sectors.push({ sx, sz });
   }
   for (let i = sectors.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -978,7 +978,7 @@ function updateAnimals(dt) {
 }
 
 
-// Génération du terrain 128 x 128 et de ses couches souterraines.
+// Génération du terrain 256 x 256 et de ses couches souterraines.
 for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
     const h = heightAt(x, z);
@@ -1024,8 +1024,8 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
 // Forêts déterministes, plus naturelles et adaptées aux pentes.
 const forestOffsetX = WORLD_SEED % 6;
 const forestOffsetZ = (WORLD_SEED >>> 8) % 7;
-for (let tx = -59 + forestOffsetX; tx <= 59; tx += 6) {
-  for (let tz = -59 + forestOffsetZ; tz <= 59; tz += 7) {
+for (let tx = WORLD_MIN + 5 + forestOffsetX; tx <= WORLD_MAX - 5; tx += 6) {
+  for (let tz = WORLD_MIN + 5 + forestOffsetZ; tz <= WORLD_MAX - 5; tz += 7) {
     const treeRoll = worldHash(tx, tz, 303);
     if (treeRoll > 0.34) continue;
     const base = heightAt(tx, tz);
