@@ -610,7 +610,7 @@ function rebuildChunk(cx, cz) {
       for (let blade = 0; blade < 3; blade++) {
         dummy.position.set(
           x + (worldHash(x, z, 713) - 0.5) * 0.24,
-          topY + 0.36 * scale,
+          topY + 0.5 + 0.36 * scale,
           z + (worldHash(x, z, 719) - 0.5) * 0.24
         );
         dummy.rotation.set(0, rotation + blade * Math.PI / 3, 0);
