@@ -444,13 +444,35 @@ const keyOf = (x, y, z) => x + ',' + y + ',' + z;
 const chunkOf = (x, z) => [Math.floor(x / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE)];
 const chunkKey = (cx, cz) => cx + ',' + cz;
 
+// Nouvelle graine à chaque chargement : le monde reste cohérent pendant
+// une partie, mais change entièrement au prochain lancement.
+const WORLD_SEED = Math.floor(Math.random() * 0xFFFFFFFF);
+function worldHash(x, z, salt = 0) {
+  let n = Math.imul((x | 0) ^ WORLD_SEED, 374761393);
+  n = Math.imul(n ^ Math.imul((z | 0) + salt, 668265263), 1274126177);
+  n = (n ^ (n >>> 15)) >>> 0;
+  n = Math.imul(n, 2246822519) >>> 0;
+  return ((n ^ (n >>> 13)) >>> 0) / 4294967296;
+}
+function smoothNoise(x, z, salt = 0) {
+  const ix = Math.floor(x), iz = Math.floor(z);
+  const fx = x - ix, fz = z - iz;
+  const sx = fx * fx * (3 - 2 * fx);
+  const sz = fz * fz * (3 - 2 * fz);
+  const a = worldHash(ix, iz, salt);
+  const b = worldHash(ix + 1, iz, salt);
+  const c = worldHash(ix, iz + 1, salt);
+  const d = worldHash(ix + 1, iz + 1, salt);
+  const top = THREE.MathUtils.lerp(a, b, sx);
+  const bottom = THREE.MathUtils.lerp(c, d, sx);
+  return THREE.MathUtils.lerp(top, bottom, sz) * 2 - 1;
+}
 function heightAt(x, z) {
-  // Relief en plusieurs échelles : grandes collines, crêtes et petites ondulations.
-  const broad = Math.sin(x * 0.105) * 2.6 + Math.cos(z * 0.09) * 2.2;
-  const hills = Math.sin((x + z) * 0.065) * 1.8 + Math.cos((x - z) * 0.055) * 1.4;
-  const ridge = Math.pow(Math.max(0, Math.sin(x * 0.045 + z * 0.035)), 2) * 4.5;
-  const detail = Math.sin(x * 0.31 + z * 0.17) * 0.45 + Math.cos(z * 0.27 - x * 0.12) * 0.35;
-  return THREE.MathUtils.clamp(Math.floor(4 + broad + hills + ridge + detail), 1, 14);
+  // Relief procédural à trois échelles : plaines, collines et petites irrégularités.
+  const broad = smoothNoise(x / 38, z / 38, 11) * 5.2;
+  const hills = smoothNoise(x / 17, z / 17, 23) * 3.2;
+  const detail = smoothNoise(x / 6, z / 6, 37) * 1.3;
+  return THREE.MathUtils.clamp(Math.floor(6 + broad + hills + detail), 1, 14);
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
@@ -877,9 +899,12 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
     const h = heightAt(x, z);
     for (let y = 2; y <= h - 3; y++) {
-      const caveA = Math.sin(x * 0.17 + y * 0.23 + Math.sin(z * 0.11));
-      const caveB = Math.cos(z * 0.16 - y * 0.19 + Math.sin(x * 0.09));
-      const caveC = Math.sin((x - z) * 0.075 + y * 0.13);
+      const ox = (WORLD_SEED % 997) * 0.013;
+      const oz = (WORLD_SEED % 991) * 0.017;
+      const oy = (WORLD_SEED % 983) * 0.019;
+      const caveA = Math.sin((x + ox) * 0.17 + (y + oy) * 0.23 + Math.sin((z + oz) * 0.11));
+      const caveB = Math.cos((z + oz) * 0.16 - (y + oy) * 0.19 + Math.sin((x + ox) * 0.09));
+      const caveC = Math.sin(((x + ox) - (z + oz)) * 0.075 + (y + oy) * 0.13);
       const caveField = caveA * 0.48 + caveB * 0.38 + caveC * 0.24;
       if (caveField > 0.72) blocks.delete(keyOf(x, y, z));
     }
@@ -892,7 +917,7 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
     const h = heightAt(x, z);
     for (let y = 1; y < h - 1; y++) {
       if (getBlock(x, y, z) !== 'stone') continue;
-      const oreRoll = Math.abs(Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453) % 1;
+      const oreRoll = worldHash(x * 31 + y * 17, z * 29 + y * 13, 101);
       if (y <= 3 && oreRoll > 0.992) setBlockData(x, y, z, 'diamond');
       else if (y <= 6 && oreRoll > 0.982) setBlockData(x, y, z, 'gold');
       else if (oreRoll > 0.965) setBlockData(x, y, z, 'iron');
@@ -904,7 +929,7 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
 // Forêts déterministes, plus naturelles et adaptées aux pentes.
 for (let tx = -59; tx <= 59; tx += 6) {
   for (let tz = -59; tz <= 59; tz += 7) {
-    const treeRoll = Math.abs(Math.sin(tx * 127.1 + tz * 311.7) * 43758.5453) % 1;
+    const treeRoll = worldHash(tx, tz, 303);
     if (treeRoll > 0.34) continue;
     const base = heightAt(tx, tz);
     const slope = Math.max(
