@@ -581,6 +581,10 @@ function rebuildChunk(cx, cz) {
     for (let i = 0; i < positions.length; i++) {
       const [x, y, z] = positions[i];
       dummy.position.set(x, y, z);
+      // Réinitialiser la transformation : les touffes d'herbe utilisent aussi dummy.
+      // Sans cela, rotation et échelle des touffes déforment les blocs reconstruits ensuite.
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     }
