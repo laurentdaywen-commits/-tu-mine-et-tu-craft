@@ -575,8 +575,8 @@ function rebuildChunk(cx, cz) {
     const positions = grouped[type];
     if (!positions.length) continue;
     const mesh = new THREE.InstancedMesh(cubeGeo, materials[type], positions.length);
-    mesh.castShadow = type !== 'leaves';
-    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
     mesh.userData.blockPositions = positions;
     for (let i = 0; i < positions.length; i++) {
       const [x, y, z] = positions[i];
@@ -628,7 +628,7 @@ function rebuildChunk(cx, cz) {
     const tufts = new THREE.InstancedMesh(tuftGeometry, tuftMaterial, tuftMatrices.length);
     tufts.name = 'grass-tufts';
     tufts.castShadow = false;
-    tufts.receiveShadow = true;
+    tufts.receiveShadow = false;
     tufts.frustumCulled = false;
     tuftMatrices.forEach((matrix, index) => tufts.setMatrixAt(index, matrix));
     tufts.instanceMatrix.needsUpdate = true;
