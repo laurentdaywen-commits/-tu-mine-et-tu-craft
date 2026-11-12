@@ -469,10 +469,12 @@ function smoothNoise(x, z, salt = 0) {
 }
 function heightAt(x, z) {
   // Relief procédural à trois échelles : plaines, collines et petites irrégularités.
-  const broad = smoothNoise(x / 38, z / 38, 11) * 5.2;
-  const hills = smoothNoise(x / 17, z / 17, 23) * 3.2;
-  const detail = smoothNoise(x / 6, z / 6, 37) * 1.3;
-  return THREE.MathUtils.clamp(Math.floor(6 + broad + hills + detail), 1, 14);
+  const offsetX = (WORLD_SEED & 0xffff) / 65535 * 1000;
+  const offsetZ = ((WORLD_SEED >>> 16) & 0xffff) / 65535 * 1000;
+  const broad = smoothNoise((x + offsetX) / 34, (z + offsetZ) / 34, 11) * 7.0;
+  const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * 4.2;
+  const detail = smoothNoise((x + offsetX) / 5, (z + offsetZ) / 5, 37) * 1.8;
+  return THREE.MathUtils.clamp(Math.floor(6 + broad + hills + detail), 1, 16);
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
@@ -927,8 +929,10 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
 }
 
 // Forêts déterministes, plus naturelles et adaptées aux pentes.
-for (let tx = -59; tx <= 59; tx += 6) {
-  for (let tz = -59; tz <= 59; tz += 7) {
+const forestOffsetX = WORLD_SEED % 6;
+const forestOffsetZ = (WORLD_SEED >>> 8) % 7;
+for (let tx = -59 + forestOffsetX; tx <= 59; tx += 6) {
+  for (let tz = -59 + forestOffsetZ; tz <= 59; tz += 7) {
     const treeRoll = worldHash(tx, tz, 303);
     if (treeRoll > 0.34) continue;
     const base = heightAt(tx, tz);
