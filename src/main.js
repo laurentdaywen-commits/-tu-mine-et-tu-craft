@@ -893,18 +893,18 @@ for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   }
 }
 
-// Cavernes souterraines : un champ 3D déterministe crée des poches reliées
+// Cavernes souterraines : un champ 3D aléatoire crée des poches reliées
 // sans toucher à la couche de surface ni au point de départ.
+const caveOffsetX = (WORLD_SEED % 997) * 0.013;
+const caveOffsetZ = (WORLD_SEED % 991) * 0.017;
+const caveOffsetY = (WORLD_SEED % 983) * 0.019;
 for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
     const h = heightAt(x, z);
     for (let y = 2; y <= h - 3; y++) {
-      const ox = (WORLD_SEED % 997) * 0.013;
-      const oz = (WORLD_SEED % 991) * 0.017;
-      const oy = (WORLD_SEED % 983) * 0.019;
-      const caveA = Math.sin((x + ox) * 0.17 + (y + oy) * 0.23 + Math.sin((z + oz) * 0.11));
-      const caveB = Math.cos((z + oz) * 0.16 - (y + oy) * 0.19 + Math.sin((x + ox) * 0.09));
-      const caveC = Math.sin(((x + ox) - (z + oz)) * 0.075 + (y + oy) * 0.13);
+      const caveA = Math.sin((x + caveOffsetX) * 0.17 + (y + caveOffsetY) * 0.23 + Math.sin((z + caveOffsetZ) * 0.11));
+      const caveB = Math.cos((z + caveOffsetZ) * 0.16 - (y + caveOffsetY) * 0.19 + Math.sin((x + caveOffsetX) * 0.09));
+      const caveC = Math.sin(((x + caveOffsetX) - (z + caveOffsetZ)) * 0.075 + (y + caveOffsetY) * 0.13);
       const caveField = caveA * 0.48 + caveB * 0.38 + caveC * 0.24;
       if (caveField > 0.72) blocks.delete(keyOf(x, y, z));
     }
