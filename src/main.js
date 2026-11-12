@@ -392,7 +392,51 @@ const materials = {
   gold: makeBlockMaterials('gold'),
   diamond: makeBlockMaterials('diamond')
 };
+
 const blockNames = Object.keys(materials);
+
+// Bras du joueur en vue subjective, attaché à la caméra comme dans Minecraft.
+const firstPersonArm = new THREE.Group();
+firstPersonArm.position.set(0.43, -0.39, -0.72);
+firstPersonArm.rotation.set(-0.08, -0.12, -0.34);
+const skinMaterial = new THREE.MeshLambertMaterial({
+  color: 0xc58b68,
+  depthTest: false,
+  depthWrite: false
+});
+const armMesh = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.48, 0.19), skinMaterial);
+armMesh.position.set(0, -0.12, 0);
+armMesh.renderOrder = 1000;
+firstPersonArm.add(armMesh);
+const handMesh = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.19, 0.205), skinMaterial);
+handMesh.position.set(0, 0.16, -0.012);
+handMesh.renderOrder = 1000;
+firstPersonArm.add(handMesh);
+
+// Le bloc tenu en main utilise les mêmes textures que les blocs du monde.
+let heldBlockMesh = null;
+function updateHeldBlock(type) {
+  if (heldBlockMesh) {
+    firstPersonArm.remove(heldBlockMesh);
+    heldBlockMesh.geometry.dispose();
+    heldBlockMesh.material.forEach(material => material.dispose());
+    heldBlockMesh = null;
+  }
+  if (!materials[type]) return;
+  const heldMaterials = materials[type].map(source => new THREE.MeshLambertMaterial({
+    map: source.map,
+    depthTest: false,
+    depthWrite: false
+  }));
+  heldBlockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), heldMaterials);
+  heldBlockMesh.position.set(-0.005, 0.31, -0.16);
+  heldBlockMesh.rotation.set(0.18, 0.48, 0.12);
+  heldBlockMesh.renderOrder = 1001;
+  firstPersonArm.add(heldBlockMesh);
+}
+camera.add(firstPersonArm);
+updateHeldBlock('grass');
+
 
 const inventory = Object.fromEntries(Object.keys(materials).map(type => [type, 0]));
 const oreDrops = { coal: 'coal', iron: 'raw_iron', gold: 'raw_gold', diamond: 'diamond' };
@@ -984,6 +1028,7 @@ function selectBlock(type) {
   if (!materials[type]) return;
   if (selected !== type) playSound('select');
   selected = type;
+  updateHeldBlock(type);
   document.querySelectorAll('.slot').forEach(button => {
     button.classList.toggle('selected', button.dataset.block === type);
   });
