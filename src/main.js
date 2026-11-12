@@ -698,21 +698,27 @@ function makeAnimal(type) {
     animalPart(group, m.nostril, -0.12, 1.0, 1.09, 0.065, 0.1, 0.025);
     animalPart(group, m.nostril, 0.12, 1.0, 1.09, 0.065, 0.1, 0.025);
   } else if (type === 'sheep') {
-    // Corps massif et carré, recouvert de grosses mèches cubiques de laine.
-    animalPart(group, m.body, 0, 1.02, 0, 1.12, 1.02, 1.42);
+    // Mouton classique Minecraft : grand volume de laine cubique,
+    // tête grise avancée, face beige/brune et quatre pattes à sabots foncés.
+    animalPart(group, m.body, 0, 1.08, -0.02, 1.18, 1.08, 1.52);
+    // Gros volumes de laine qui donnent une silhouette rectangulaire et épaisse.
     for (const [x,y,z,sx,sy,sz] of [
-      [-0.43,1.42,0.35,0.38,0.38,0.42],[0.43,1.42,0.35,0.38,0.38,0.42],
-      [-0.43,1.40,-0.38,0.38,0.38,0.42],[0.43,1.40,-0.38,0.38,0.38,0.42],
-      [0,1.52,-0.12,0.42,0.38,0.48],[0,1.43,0.55,0.42,0.34,0.30],
-      [-0.53,1.03,0,0.26,0.52,0.58],[0.53,1.03,0,0.26,0.52,0.58]
+      [-0.43,1.48,0.42,0.42,0.42,0.48],[0.43,1.48,0.42,0.42,0.42,0.48],
+      [-0.43,1.48,-0.43,0.42,0.42,0.48],[0.43,1.48,-0.43,0.42,0.42,0.48],
+      [0,1.62,-0.05,0.48,0.34,0.55],
+      [-0.56,1.08,0.02,0.22,0.58,0.72],[0.56,1.08,0.02,0.22,0.58,0.72]
     ]) animalPart(group, m.body, x,y,z,sx,sy,sz);
-    // Tête rectangulaire grise, face beige/brune, museau rose et yeux noirs.
-    animalPart(group, m.head, 0, 1.18, 0.88, 0.58, 0.68, 0.48);
-    animalPart(group, m.face, 0, 1.19, 1.125, 0.43, 0.37, 0.035);
-    animalPart(group, m.muzzle, 0, 0.99, 1.155, 0.32, 0.25, 0.12);
-    animalPart(group, m.head, -0.36, 1.34, 0.83, 0.20, 0.18, 0.30);
-    animalPart(group, m.head, 0.36, 1.34, 0.83, 0.20, 0.18, 0.30);
-    addAnimalEyes(group, m.eye, 0, 1.27, 1.15, 0.205, 0.075);
+    // Tête avancée : crâne gris clair, bande brune autour des yeux,
+    // face beige, yeux noirs et museau rose.
+    animalPart(group, m.head, 0, 1.20, 0.98, 0.58, 0.66, 0.56);
+    animalPart(group, m.face, 0, 1.19, 1.272, 0.43, 0.39, 0.035);
+    animalPart(group, m.dark, -0.145, 1.285, 1.294, 0.105, 0.105, 0.025);
+    animalPart(group, m.dark, 0.145, 1.285, 1.294, 0.105, 0.105, 0.025);
+    animalPart(group, m.muzzle, 0, 0.99, 1.305, 0.30, 0.25, 0.10);
+    // Oreilles grises visibles de chaque côté de la tête.
+    animalPart(group, m.head, -0.36, 1.34, 0.99, 0.22, 0.16, 0.30);
+    animalPart(group, m.head, 0.36, 1.34, 0.99, 0.22, 0.16, 0.30);
+    addAnimalEyes(group, m.eye, 0, 1.285, 1.315, 0.145, 0.065);
   } else {
     animalPart(group, m.body, 0, 0.72, 0, 0.62, 0.72, 0.72);
     animalPart(group, m.wing, -0.32, 0.78, -0.02, 0.16, 0.42, 0.48);
@@ -730,8 +736,9 @@ function makeAnimal(type) {
   for (const x of [-legX, legX]) {
     for (const z of [-legZ, legZ]) {
       if (type === 'sheep') {
-        const upper = animalPart(group, m.body, x, 0.39, z, legW * 1.12, 0.42, legW * 1.12);
-        animalPart(group, m.legs, x, 0.14, z, legW * 1.12, 0.30, legW * 1.12);
+        const upper = animalPart(group, m.body, x, 0.43, z, 0.205, 0.48, 0.205);
+        animalPart(group, m.legs, x, 0.16, z, 0.205, 0.34, 0.205);
+        animalPart(group, m.dark, x, 0.025, z + 0.012, 0.215, 0.07, 0.215);
         legs.push(upper);
       } else {
         const leg = animalPart(group, m.legs, x, legH / 2, z, legW, legH, legW);
