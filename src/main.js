@@ -256,119 +256,97 @@ function makeBlockTexture(type, face) {
     }
   };
 
-  // Fonds et motifs spécifiques à chaque bloc.
+  // Textures 16x16 originales dessinées pour retrouver le pixel-art classique.
+  // Les motifs sont déterministes par bloc et par face.
+  const speckle = (colors, count, minW=1, maxW=2) => {
+    for (let i=0;i<count;i++) {
+      const w=minW+Math.floor(random()*(maxW-minW+1));
+      const h=random()>0.82?2:1;
+      pixel(Math.floor(random()*(16-w+1)),Math.floor(random()*(16-h+1)),
+        colors[Math.floor(random()*colors.length)],w,h);
+    }
+  };
   if (type === 'grass') {
     if (face === 2) {
-      // Dessus : mosaïque 16x16 en petits carrés verts, comme le bloc
-      // d'herbe classique de Minecraft (motif irrégulier, sans dégradé).
-      const top = [
-        '0011222200112233',
-        '0011222200112233',
-        '1100223311002233',
-        '1100223311002233',
-        '2233110022331100',
-        '2233110022331100',
-        '3322110033221100',
-        '3322110033221100',
-        '0011332200113322',
-        '0011332200113322',
-        '2211003322110033',
-        '2211003322110033',
-        '1133220011332200',
-        '1133220011332200',
-        '0033221100332211',
-        '0033221100332211'
-      ];
-      const greens = ['#315f2e', '#3d7335', '#477f3b', '#548d43'];
-      for (let y = 0; y < 16; y++) {
-        for (let x = 0; x < 16; x++) {
-          const index = Number(top[y][x]);
-          pixel(x, y, greens[index]);
-        }
-      }
-      // Quelques nuances isolées gardent l'aspect pixelisé naturel.
-      for (let i = 0; i < 15; i++) {
-        const x = Math.floor(random() * 16), y = Math.floor(random() * 16);
-        pixel(x, y, random() > 0.5 ? '#5b9849' : '#294f29');
-      }
+      const greens=['#78b83b','#72ad35','#6aa331','#83c447','#5f982e'];
+      pixel(0,0,greens[0],16,16);
+      speckle(greens,46,1,2);
+      for(let i=0;i<10;i++) pixel(Math.floor(random()*16),Math.floor(random()*16),'#91cb4b');
     } else if (face === 3) {
-      pixel(0, 0, '#795438', 16, 16);
-      fillNoise(['#866043', '#795438', '#906747', '#704c34', '#9b704d'], 58, 1, 2);
+      pixel(0,0,'#866043',16,16);
+      speckle(['#795438','#906747','#704c34','#9b704d','#67452f'],48,1,2);
     } else {
-      // Flanc : terre brun pixelisée, petites inclusions gris bleuté,
-      // puis couche d'herbe irrégulière qui descend par mèches carrées.
-      const dirt = ['#795438', '#866043', '#906747', '#704c34', '#9b704d', '#67452f'];
-      pixel(0, 0, '#795438', 16, 16);
-      fillNoise(dirt, 68, 1, 3);
-      for (let i = 0; i < 7; i++) {
-        const x = Math.floor(random() * 15), y = 5 + Math.floor(random() * 10);
-        pixel(x, y, '#667783', 1 + (random() > 0.65 ? 1 : 0), 1);
-      }
-      const grass = ['#315f2e', '#3d7335', '#477f3b', '#548d43'];
-      const fringe = [4,3,4,5,3,4,6,4,3,5,4,6,3,4,5,3];
-      for (let x = 0; x < 16; x++) {
-        const drop = fringe[x] + (random() > 0.82 ? 1 : 0);
-        pixel(x, 0, grass[Math.floor(random() * grass.length)], 1, drop);
-        if (drop > 2) pixel(x, drop - 1, random() > 0.5 ? '#315f2e' : '#3d7335');
-      }
-      // Liseré sombre sous le gazon et petites racines carrées.
-      for (let x = 0; x < 16; x++) {
-        if (random() > 0.55) pixel(x, fringe[x], '#563d2b');
+      pixel(0,0,'#866043',16,16);
+      speckle(['#795438','#906747','#704c34','#9b704d','#67452f'],43,1,2);
+      const cap=[4,3,4,5,3,4,6,4,3,5,4,6,3,4,5,3];
+      const grass=['#78b83b','#72ad35','#6aa331','#83c447'];
+      for(let x=0;x<16;x++){
+        const h=cap[x]+(random()>.78?1:0);
+        pixel(x,0,grass[Math.floor(random()*grass.length)],1,h);
+        if(random()>.45) pixel(x,h, '#795438');
       }
     }
   } else if (type === 'dirt') {
-    pixel(0, 0, '#866043', 16, 16);
-    fillNoise(palettes.dirt, 62);
-  } else if (type === 'stone' || ['coal', 'iron', 'gold', 'diamond'].includes(type)) {
-    pixel(0, 0, '#7d7d7d', 16, 16);
-    fillNoise(['#858585', '#747474', '#8c8c8c', '#696969'], 66);
-    // Petites cassures et taches discrètes, comme la pierre vanilla.
-    for (let i = 0; i < 5; i++) {
-      const x = Math.floor(random() * 14), y = Math.floor(random() * 14);
-      pixel(x, y, '#686868', 2, 1);
-      pixel(x + 1, y + 1, '#929292');
+    pixel(0,0,'#866043',16,16);
+    speckle(['#795438','#906747','#704c34','#9b704d','#67452f','#a07850'],62,1,2);
+    for(let i=0;i<9;i++){
+      const x=Math.floor(random()*14),y=Math.floor(random()*14);
+      pixel(x,y,'#704c34',2,1);
+      pixel(x+1,y+1,'#9b704d');
     }
-    if (type !== 'stone') {
-      const ore = palettes[type];
-      // Filons en petits amas pixelisés, bordés d'une ombre plus sombre.
-      const clusters = 3 + Math.floor(random() * 2);
-      for (let c = 0; c < clusters; c++) {
-        const x = 1 + Math.floor(random() * 13), y = 1 + Math.floor(random() * 13);
-        pixel(x, y, ore[3], 2, 2);
-        pixel(x + 1, y, ore[1], 2, 1);
-        pixel(x, y + 1, ore[1], 1, 2);
-        pixel(x + 1, y + 1, ore[2], 1, 1);
+  } else if (type === 'stone' || ['coal','iron','gold','diamond'].includes(type)) {
+    pixel(0,0,'#7d7d7d',16,16);
+    speckle(['#858585','#747474','#8c8c8c','#696969','#929292','#707070'],72,1,2);
+    for(let i=0;i<8;i++){
+      const x=Math.floor(random()*13),y=Math.floor(random()*13);
+      pixel(x,y,'#696969',3,1);
+      pixel(x,y+1,'#929292',2,1);
+    }
+    if(type!=='stone'){
+      const ore={
+        coal:['#202020','#303030','#111111','#484848'],
+        iron:['#bca58e','#d7c4ad','#8f806f','#e0d0bd'],
+        gold:['#e2b923','#f6d84b','#b88916','#ffe36a'],
+        diamond:['#31c5c7','#8af1e8','#168f9a','#b4fff4']
+      }[type];
+      for(let c=0;c<4;c++){
+        const x=1+Math.floor(random()*12),y=1+Math.floor(random()*12);
+        pixel(x,y,ore[2],3,2);
+        pixel(x+1,y,ore[0],2,2);
+        pixel(x,y+1,ore[1],2,1);
+        pixel(x+1,y+1,ore[1],2,1);
+        if(random()>.45) pixel(x+2,y+1,ore[3],1,1);
       }
     }
   } else if (type === 'wood') {
-    if (face === 2 || face === 3) {
-      pixel(0, 0, '#bd9259', 16, 16);
-      pixel(2, 2, '#a97843', 12, 12);
-      pixel(4, 4, '#d0a56b', 8, 8);
-      pixel(6, 6, '#a97843', 4, 4);
-      pixel(7, 7, '#d0a56b', 2, 2);
-      pixel(7, 7, '#80502a');
-      pixel(1, 5, '#e0b77b'); pixel(12, 2, '#e0b77b');
-      pixel(3, 12, '#8a5a31'); pixel(12, 12, '#8a5a31');
-    } else {
-      pixel(0, 0, '#95602f', 16, 16);
-      for (let x = 0; x < 16; x++) {
-        const stripe = x % 4;
-        if (stripe === 0) pixel(x, 0, '#704522', 1, 16);
-        else if (stripe === 1) pixel(x, 0, '#b47b40', 1, 16);
-        else if (stripe === 2) pixel(x, 0, '#a8733d', 1, 16);
+    if(face===2||face===3){
+      pixel(0,0,'#bd9259',16,16);
+      pixel(2,2,'#a97843',12,12);
+      pixel(3,3,'#d0a56b',10,10);
+      pixel(5,5,'#a97843',6,6);
+      pixel(6,6,'#d0a56b',4,4);
+      pixel(7,7,'#80502a',2,2);
+      for(let i=0;i<8;i++){
+        const x=Math.floor(random()*16),y=Math.floor(random()*16);
+        pixel(x,y,random()>.5?'#e0b77b':'#8a5a31');
       }
-      for (let i = 0; i < 7; i++) {
-        const x = Math.floor(random() * 16), y = Math.floor(random() * 13);
-        pixel(x, y, '#704522', 1, 2 + Math.floor(random() * 3));
+    } else {
+      pixel(0,0,'#95602f',16,16);
+      for(let x=0;x<16;x++){
+        const band=x%4;
+        pixel(x,0,band===0?'#704522':band===1?'#b47b40':band===2?'#a8733d':'#95602f',1,16);
+      }
+      for(let i=0;i<12;i++){
+        const x=Math.floor(random()*16),y=Math.floor(random()*13);
+        pixel(x,y,random()>.5?'#704522':'#c18a4b',1,2+Math.floor(random()*3));
       }
     }
   } else if (type === 'leaves') {
-    pixel(0, 0, '#3f8f25', 16, 16);
-    fillNoise(['#347d20', '#4b9c2b', '#2f701e', '#58a832', '#438c27'], 90);
-    for (let i = 0; i < 14; i++) {
-      const x = Math.floor(random() * 15), y = Math.floor(random() * 15);
-      pixel(x, y, '#28691c', 2, 1);
+    pixel(0,0,'#347d20',16,16);
+    speckle(['#3f8f25','#4b9c2b','#2f701e','#58a832','#438c27','#28691c'],100,1,2);
+    for(let i=0;i<18;i++){
+      const x=Math.floor(random()*15),y=Math.floor(random()*15);
+      pixel(x,y,'#28691c',2,1);
     }
   }
 
