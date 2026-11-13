@@ -4,8 +4,8 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 // Monde voxel organisé en chunks. Les blocs d'un chunk sont regroupés par matériau
 // dans des InstancedMesh : beaucoup moins d'appels de rendu qu'un Mesh par bloc.
 const CHUNK_SIZE = 8;
-const WORLD_MIN = -128;
-const WORLD_MAX = 127;
+const WORLD_MIN = -256;
+const WORLD_MAX = 255;
 const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
@@ -885,11 +885,11 @@ function animalGroundAt(x, z) {
 }
 function spawnAnimals() {
   const types = ['cow', 'pig', 'sheep', 'chicken'];
-  // La carte 256 x 256 est divisée en 64 secteurs de 32 x 32 blocs.
+  // La carte 512 x 512 est divisée en 256 secteurs de 32 x 32 blocs.
   // On mélange les secteurs et on place au plus un animal dans chacun.
   const sectors = [];
-  for (let sx = 0; sx < 8; sx++) {
-    for (let sz = 0; sz < 8; sz++) sectors.push({ sx, sz });
+  for (let sx = 0; sx < 16; sx++) {
+    for (let sz = 0; sz < 16; sz++) sectors.push({ sx, sz });
   }
   for (let i = sectors.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -978,7 +978,7 @@ function updateAnimals(dt) {
 }
 
 
-// Génération du terrain 256 x 256 et de ses couches souterraines.
+// Génération du terrain 512 x 512 et de ses couches souterraines.
 for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
   for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
     const h = heightAt(x, z);
