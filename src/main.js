@@ -487,6 +487,14 @@ function drawOreInventoryIcons() {
 }
 drawOreInventoryIcons();
 
+const seedParams = new URLSearchParams(location.search);
+const seedProvided = seedParams.has('seed') && seedParams.get('seed').trim() !== '';
+const WORLD_SEED = seedProvided ? normalizeSeed(seedParams.get('seed')) : createWorldSeed();
+if (!seedProvided) {
+  seedParams.set('seed', String(WORLD_SEED));
+  history.replaceState(null, '', location.pathname + '?' + seedParams.toString() + location.hash);
+}
+
 const blocks = new Map(); // modifications apportées au monde : type ou null si bloc miné
 const worldSaveKey = 'tu-mine-craft-world-' + WORLD_SEED;
 try {
@@ -517,13 +525,6 @@ function normalizeSeed(value) {
   let hash = 2166136261;
   for (let i = 0; i < raw.length; i++) hash = Math.imul(hash ^ raw.charCodeAt(i), 16777619) >>> 0;
   return hash >>> 0;
-}
-const seedParams = new URLSearchParams(location.search);
-const seedProvided = seedParams.has('seed') && seedParams.get('seed').trim() !== '';
-const WORLD_SEED = seedProvided ? normalizeSeed(seedParams.get('seed')) : createWorldSeed();
-if (!seedProvided) {
-  seedParams.set('seed', String(WORLD_SEED));
-  history.replaceState(null, '', location.pathname + '?' + seedParams.toString() + location.hash);
 }
 const seedDisplay = document.querySelector('#world-seed-value');
 if (seedDisplay) seedDisplay.textContent = String(WORLD_SEED);
