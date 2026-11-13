@@ -487,7 +487,16 @@ function drawOreInventoryIcons() {
 }
 drawOreInventoryIcons();
 
-const blocks = new Map(); // "x,y,z" -> type
+const blocks = new Map(); // modifications apportées au monde : type ou null si bloc miné
+const worldSaveKey = 'tu-mine-craft-world-' + WORLD_SEED;
+try {
+  const saved = JSON.parse(localStorage.getItem(worldSaveKey) || '[]');
+  if (Array.isArray(saved)) for (const entry of saved) if (Array.isArray(entry) && entry.length === 2) blocks.set(entry[0], entry[1]);
+} catch (error) { console.warn('Sauvegarde du monde illisible :', error); }
+function saveWorldChanges() {
+  try { localStorage.setItem(worldSaveKey, JSON.stringify([...blocks])); }
+  catch (error) { console.warn('Sauvegarde locale impossible :', error); }
+}
 const chunks = new Map(); // "cx,cz" -> meshes du chunk
 const dummy = new THREE.Object3D();
 const keyOf = (x, y, z) => x + ',' + y + ',' + z;
@@ -567,6 +576,7 @@ function heightAt(x, z) {
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
+  saveWorldChanges();
 }
 function proceduralBlock(x, y, z) {
   if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < 0 || y > 24) return undefined;
@@ -604,7 +614,7 @@ function proceduralBlock(x, y, z) {
         const slope = Math.max(Math.abs(base - heightAt(tx + 1, tz)), Math.abs(base - heightAt(tx - 1, tz)), Math.abs(base - heightAt(tx, tz + 1)), Math.abs(base - heightAt(tx, tz - 1)));
         if (slope > 2) continue;
         if (x === tx && z === tz && y >= base + 1 && y <= base + 3) type = 'wood';
-        if (y >= base + 3 && y <= base + 5 && Math.abs(x - tx) + Math.abs(z - tz) + (y === base + 5 ? 1 : 0) < 5) type = 'leaves';
+        if (!type && y >= base + 3 && y <= base + 5 && Math.abs(x - tx) + Math.abs(z - tz) + (y === base + 5 ? 1 : 0) < 5) type = 'leaves';
         if (type) return type;
       }
     }
@@ -734,6 +744,7 @@ function removeBlockAt(x, y, z) {
   addToInventory(minedType);
   playSound('mine', minedType);
   blocks.set(keyOf(x, y, z), null);
+  saveWorldChanges();
   rebuildAt(x, z);
   return true;
 }
