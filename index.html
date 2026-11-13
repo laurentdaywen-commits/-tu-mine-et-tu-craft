@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#79bce8">
   <title>Tu mine et tu craft</title>
-  <link rel="stylesheet" href="./style.css?v=seed-panel-lowered-20261113">
+  <link rel="stylesheet" href="./style.css?v=welcome-screen-20261113">
   <script type="importmap">
     {
       "imports": {
@@ -17,6 +17,25 @@
 </head>
 <body>
   <div id="game">
+    <section id="welcome-screen" aria-label="Écran d'accueil">
+      <div class="welcome-sky"></div>
+      <div class="welcome-sun"></div>
+      <div class="welcome-cloud cloud-one"></div>
+      <div class="welcome-cloud cloud-two"></div>
+      <div class="welcome-hills">
+        <div class="welcome-hill hill-back"></div>
+        <div class="welcome-hill hill-front"></div>
+      </div>
+      <div class="welcome-tree tree-left"><i></i><b></b></div>
+      <div class="welcome-tree tree-right"><i></i><b></b></div>
+      <div class="welcome-content">
+        <div class="welcome-eyebrow">UN MONDE À CONSTRUIRE</div>
+        <h1>TU MINE ET<br> TU CRAFT</h1>
+        <p>Explore, récolte et bâtis ton univers.</p>
+        <button id="welcome-play" type="button">JOUER</button>
+      </div>
+      <div class="welcome-footer">Un monde infini d'aventures t'attend</div>
+    </section>
     <div id="sky-label">TU MINE ET TU CRAFT</div>
     <details id="world-seed-panel">
       <summary>Graine : <strong id="world-seed-value">...</strong></summary>
@@ -62,7 +81,16 @@
     }
     addEventListener('error', event => showGameError(event.error || event.message));
     addEventListener('unhandledrejection', event => showGameError(event.reason));
-    import('./src/main.js?v=seeded-world-60000000-20261113').catch(showGameError);
+    const welcomeScreen = document.querySelector('#welcome-screen');
+    const playButton = document.querySelector('#welcome-play');
+    playButton.addEventListener('click', () => {
+      playButton.disabled = true;
+      playButton.textContent = 'CHARGEMENT...';
+      welcomeScreen.classList.add('welcome-leaving');
+      document.querySelector('#loading').classList.remove('done');
+      import('./src/main.js?v=seeded-world-60000000-20261113').catch(showGameError);
+      window.setTimeout(() => welcomeScreen.remove(), 450);
+    });
   </script>
 </body>
 </html>
