@@ -18,6 +18,14 @@
 <body>
   <div id="game">
     <div id="sky-label">TU MINE ET TU CRAFT</div>
+    <details id="world-seed-panel">
+      <summary>Graine : <strong id="world-seed-value">...</strong></summary>
+      <div class="seed-tools">
+        <input id="world-seed-input" type="text" inputmode="numeric" aria-label="Graine du monde" placeholder="Saisir une graine">
+        <button id="world-seed-apply" type="button">Charger</button>
+        <button id="world-seed-copy" type="button">Copier</button>
+      </div>
+    </details>
     <div id="crosshair">+</div>
     <div id="hint">Clique dans le monde pour jouer · WASD pour bouger · Espace pour sauter</div>
     <div id="toolbar" aria-label="Barre de blocs">
@@ -53,7 +61,7 @@
     }
     addEventListener('error', event => showGameError(event.error || event.message));
     addEventListener('unhandledrejection', event => showGameError(event.reason));
-    import('./src/main.js?v=show-first-person-arm-20261112').catch(showGameError);
+    import('./src/main.js?v=seeded-world-60000000-20261113').catch(showGameError);
   </script>
 </body>
 </html>
