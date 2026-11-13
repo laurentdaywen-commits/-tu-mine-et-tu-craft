@@ -536,6 +536,12 @@ document.querySelector('#world-seed-apply')?.addEventListener('click', () => {
   next.set('seed', String(normalizeSeed(value)));
   location.search = next.toString();
 });
+document.querySelector('#world-seed-new')?.addEventListener('click', () => {
+  const next = new URLSearchParams(location.search);
+  next.delete('seed');
+  const query = next.toString();
+  location.href = location.pathname + (query ? '?' + query : '') + location.hash;
+});
 document.querySelector('#world-seed-copy')?.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(String(WORLD_SEED));
