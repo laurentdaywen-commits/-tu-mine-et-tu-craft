@@ -4,8 +4,8 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 // Monde voxel organisé en chunks. Les blocs d'un chunk sont regroupés par matériau
 // dans des InstancedMesh : beaucoup moins d'appels de rendu qu'un Mesh par bloc.
 const CHUNK_SIZE = 8;
-const WORLD_MIN = -256;
-const WORLD_MAX = 255;
+const WORLD_MIN = -30000000;
+const WORLD_MAX = 29999999;
 const RENDER_DISTANCE = 3;
 
 const scene = new THREE.Scene();
@@ -494,9 +494,48 @@ const keyOf = (x, y, z) => x + ',' + y + ',' + z;
 const chunkOf = (x, z) => [Math.floor(x / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE)];
 const chunkKey = (cx, cz) => cx + ',' + cz;
 
-// Nouvelle graine à chaque chargement : le monde reste cohérent pendant
-// une partie, mais change entièrement au prochain lancement.
-const WORLD_SEED = Math.floor(Math.random() * 0xFFFFFFFF);
+// Une graine numérique fixe l'intégralité du terrain. Sans graine dans l'URL,
+// une nouvelle graine aléatoire est créée et affichée pour pouvoir la partager.
+function createWorldSeed() {
+  const values = new Uint32Array(1);
+  if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(values);
+  else values[0] = Math.floor(Math.random() * 0xFFFFFFFF);
+  return values[0] >>> 0;
+}
+function normalizeSeed(value) {
+  const raw = String(value || '').trim();
+  if (/^\\d+$/.test(raw)) return Number(raw) >>> 0;
+  let hash = 2166136261;
+  for (let i = 0; i < raw.length; i++) hash = Math.imul(hash ^ raw.charCodeAt(i), 16777619) >>> 0;
+  return hash >>> 0;
+}
+const seedParams = new URLSearchParams(location.search);
+const seedProvided = seedParams.has('seed') && seedParams.get('seed').trim() !== '';
+const WORLD_SEED = seedProvided ? normalizeSeed(seedParams.get('seed')) : createWorldSeed();
+if (!seedProvided) {
+  seedParams.set('seed', String(WORLD_SEED));
+  history.replaceState(null, '', location.pathname + '?' + seedParams.toString() + location.hash);
+}
+const seedDisplay = document.querySelector('#world-seed-value');
+if (seedDisplay) seedDisplay.textContent = String(WORLD_SEED);
+const seedInput = document.querySelector('#world-seed-input');
+if (seedInput) seedInput.value = String(WORLD_SEED);
+document.querySelector('#world-seed-apply')?.addEventListener('click', () => {
+  const value = seedInput.value.trim();
+  if (!value) return;
+  const next = new URLSearchParams(location.search);
+  next.set('seed', String(normalizeSeed(value)));
+  location.search = next.toString();
+});
+document.querySelector('#world-seed-copy')?.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(String(WORLD_SEED));
+    document.querySelector('#world-seed-copy').textContent = 'Copiée !';
+  } catch {
+    seedInput.focus(); seedInput.select();
+    document.querySelector('#world-seed-copy').textContent = 'Sélectionnée';
+  }
+});
 function worldHash(x, z, salt = 0) {
   let n = Math.imul((x | 0) ^ WORLD_SEED, 374761393);
   n = Math.imul(n ^ Math.imul((z | 0) + salt, 668265263), 1274126177);
@@ -529,8 +568,52 @@ function heightAt(x, z) {
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
 }
+function proceduralBlock(x, y, z) {
+  if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < 0 || y > 24) return undefined;
+  const h = heightAt(x, z);
+  let type;
+  if (y <= h) {
+    type = y === h ? (h >= 10 ? 'stone' : 'grass') : y >= h - 2 ? 'dirt' : 'stone';
+    if (y >= 2 && y <= h - 3) {
+      const ox = (WORLD_SEED % 997) * 0.013;
+      const oz = (WORLD_SEED % 991) * 0.017;
+      const oy = (WORLD_SEED % 983) * 0.019;
+      const caveA = Math.sin((x + ox) * 0.17 + (y + oy) * 0.23 + Math.sin((z + oz) * 0.11));
+      const caveB = Math.cos((z + oz) * 0.16 - (y + oy) * 0.19 + Math.sin((x + ox) * 0.09));
+      const caveC = Math.sin(((x + ox) - (z + oz)) * 0.075 + (y + oy) * 0.13);
+      if (caveA * 0.48 + caveB * 0.38 + caveC * 0.24 > 0.72) type = undefined;
+    }
+    if (type === 'stone' && y >= 1 && y < h - 1) {
+      const oreRoll = worldHash(x * 31 + y * 17, z * 29 + y * 13, 101);
+      if (y <= 3 && oreRoll > 0.992) type = 'diamond';
+      else if (y <= 6 && oreRoll > 0.982) type = 'gold';
+      else if (oreRoll > 0.965) type = 'iron';
+      else if (oreRoll > 0.935) type = 'coal';
+    }
+  }
+  if (!type) {
+    const ox = WORLD_SEED % 6;
+    const oz = (WORLD_SEED >>> 8) % 7;
+    for (let tx = Math.floor((x - ox) / 6) * 6 + ox - 6; tx <= x + 2; tx += 6) {
+      if (Math.abs(x - tx) > 2 || tx < WORLD_MIN + 5 || tx > WORLD_MAX - 5) continue;
+      for (let tz = Math.floor((z - oz) / 7) * 7 + oz - 7; tz <= z + 2; tz += 7) {
+        if (Math.abs(z - tz) > 2 || tz < WORLD_MIN + 5 || tz > WORLD_MAX - 5) continue;
+        if (worldHash(tx, tz, 303) > 0.34) continue;
+        const base = heightAt(tx, tz);
+        if (base >= 9) continue;
+        const slope = Math.max(Math.abs(base - heightAt(tx + 1, tz)), Math.abs(base - heightAt(tx - 1, tz)), Math.abs(base - heightAt(tx, tz + 1)), Math.abs(base - heightAt(tx, tz - 1)));
+        if (slope > 2) continue;
+        if (x === tx && z === tz && y >= base + 1 && y <= base + 3) type = 'wood';
+        if (y >= base + 3 && y <= base + 5 && Math.abs(x - tx) + Math.abs(z - tz) + (y === base + 5 ? 1 : 0) < 5) type = 'leaves';
+        if (type) return type;
+      }
+    }
+  }
+  return type;
+}
 function getBlock(x, y, z) {
-  return blocks.get(keyOf(x, y, z));
+  const key = keyOf(x, y, z);
+  return blocks.has(key) ? blocks.get(key) : proceduralBlock(x, y, z);
 }
 function rebuildChunk(cx, cz) {
   const id = chunkKey(cx, cz);
@@ -650,7 +733,7 @@ function removeBlockAt(x, y, z) {
   // Les blocs ordinaires sont récoltés comme blocs ; les minerais donnent uniquement leur ressource.
   addToInventory(minedType);
   playSound('mine', minedType);
-  blocks.delete(keyOf(x, y, z));
+  blocks.set(keyOf(x, y, z), null);
   rebuildAt(x, z);
   return true;
 }
@@ -885,39 +968,24 @@ function animalGroundAt(x, z) {
 }
 function spawnAnimals() {
   const types = ['cow', 'pig', 'sheep', 'chicken'];
-  // La carte 512 x 512 est divisée en 256 secteurs de 32 x 32 blocs.
-  // On mélange les secteurs et on place au plus un animal dans chacun.
-  const sectors = [];
-  for (let sx = 0; sx < 16; sx++) {
-    for (let sz = 0; sz < 16; sz++) sectors.push({ sx, sz });
-  }
-  for (let i = sectors.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [sectors[i], sectors[j]] = [sectors[j], sectors[i]];
-  }
-
-  for (const sector of sectors) {
-    if (animals.length >= MAX_ANIMALS) break;
-    const minX = WORLD_MIN + sector.sx * 32;
-    const minZ = WORLD_MIN + sector.sz * 32;
-    for (let attempt = 0; attempt < 180; attempt++) {
-      const x = minX + 2 + Math.random() * 28;
-      const z = minZ + 2 + Math.random() * 28;
+  // Les premiers animaux sont déterminés par la graine et apparaissent près du départ.
+  for (let i = 0; i < MAX_ANIMALS; i++) {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const x = Math.floor(worldHash(i, attempt, 801) * 49) - 24;
+      const z = Math.floor(worldHash(i, attempt, 809) * 49) - 14;
       const ground = animalGroundAt(x, z);
       if (ground === null) continue;
-      if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 12)) continue;
-
-      // Les quatre espèces ont exactement la même chance d'apparaître.
-      const type = types[Math.floor(Math.random() * types.length)];
+      if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 8)) continue;
+      const type = types[Math.floor(worldHash(i, attempt, 811) * types.length)];
       const group = makeAnimal(type);
-      group.position.set(Math.round(x), ground, Math.round(z));
-      group.rotation.y = Math.random() * Math.PI * 2;
+      group.position.set(x, ground, z);
+      group.rotation.y = worldHash(i, attempt, 813) * Math.PI * 2;
       scene.add(group);
       animals.push({
-        group, type, targetX: group.position.x, targetZ: group.position.z,
-        timer: Math.random() * 3, phase: Math.random() * Math.PI * 2,
-        callTimer: 9 + Math.random() * 17,
-        speed: type === 'chicken' ? 1.05 : 0.72 + Math.random() * 0.22
+        group, type, targetX: x, targetZ: z,
+        timer: worldHash(i, attempt, 815) * 3, phase: worldHash(i, attempt, 817) * Math.PI,
+        callTimer: 9 + worldHash(i, attempt, 819) * 17,
+        speed: type === 'chicken' ? 1.05 : 0.72 + worldHash(i, attempt, 821) * 0.22
       });
       break;
     }
@@ -978,77 +1046,9 @@ function updateAnimals(dt) {
 }
 
 
-// Génération du terrain 512 x 512 et de ses couches souterraines.
-for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
-  for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
-    const h = heightAt(x, z);
-    for (let y = 0; y <= h; y++) {
-      setBlockData(x, y, z, y === h ? (h >= 10 ? 'stone' : 'grass') : y >= h - 2 ? 'dirt' : 'stone');
-    }
-  }
-}
+// Terrain, grottes, minerais et arbres générés à la demande lors du chargement
+// des chunks. La taille totale du monde n'augmente pas l'utilisation mémoire.
 
-// Cavernes souterraines : un champ 3D aléatoire crée des poches reliées
-// sans toucher à la couche de surface ni au point de départ.
-const caveOffsetX = (WORLD_SEED % 997) * 0.013;
-const caveOffsetZ = (WORLD_SEED % 991) * 0.017;
-const caveOffsetY = (WORLD_SEED % 983) * 0.019;
-for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
-  for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
-    const h = heightAt(x, z);
-    for (let y = 2; y <= h - 3; y++) {
-      const caveA = Math.sin((x + caveOffsetX) * 0.17 + (y + caveOffsetY) * 0.23 + Math.sin((z + caveOffsetZ) * 0.11));
-      const caveB = Math.cos((z + caveOffsetZ) * 0.16 - (y + caveOffsetY) * 0.19 + Math.sin((x + caveOffsetX) * 0.09));
-      const caveC = Math.sin(((x + caveOffsetX) - (z + caveOffsetZ)) * 0.075 + (y + caveOffsetY) * 0.13);
-      const caveField = caveA * 0.48 + caveB * 0.38 + caveC * 0.24;
-      if (caveField > 0.72) blocks.delete(keyOf(x, y, z));
-    }
-  }
-}
-
-// Minerais intégrés dans la roche. Leur répartition reste identique à chaque partie.
-for (let x = WORLD_MIN; x <= WORLD_MAX; x++) {
-  for (let z = WORLD_MIN; z <= WORLD_MAX; z++) {
-    const h = heightAt(x, z);
-    for (let y = 1; y < h - 1; y++) {
-      if (getBlock(x, y, z) !== 'stone') continue;
-      const oreRoll = worldHash(x * 31 + y * 17, z * 29 + y * 13, 101);
-      if (y <= 3 && oreRoll > 0.992) setBlockData(x, y, z, 'diamond');
-      else if (y <= 6 && oreRoll > 0.982) setBlockData(x, y, z, 'gold');
-      else if (oreRoll > 0.965) setBlockData(x, y, z, 'iron');
-      else if (oreRoll > 0.935) setBlockData(x, y, z, 'coal');
-    }
-  }
-}
-
-// Forêts déterministes, plus naturelles et adaptées aux pentes.
-const forestOffsetX = WORLD_SEED % 6;
-const forestOffsetZ = (WORLD_SEED >>> 8) % 7;
-for (let tx = WORLD_MIN + 5 + forestOffsetX; tx <= WORLD_MAX - 5; tx += 6) {
-  for (let tz = WORLD_MIN + 5 + forestOffsetZ; tz <= WORLD_MAX - 5; tz += 7) {
-    const treeRoll = worldHash(tx, tz, 303);
-    if (treeRoll > 0.34) continue;
-    const base = heightAt(tx, tz);
-    const slope = Math.max(
-      Math.abs(base - heightAt(tx + 1, tz)),
-      Math.abs(base - heightAt(tx - 1, tz)),
-      Math.abs(base - heightAt(tx, tz + 1)),
-      Math.abs(base - heightAt(tx, tz - 1))
-    );
-    if (base >= 9 || slope > 2) continue;
-    for (let y = 1; y <= 3; y++) setBlockData(tx, base + y, tz, 'wood');
-    for (let ox = -2; ox <= 2; ox++) {
-      for (let oz = -2; oz <= 2; oz++) {
-        for (let oy = 3; oy <= 5; oy++) {
-          if (Math.abs(ox) + Math.abs(oz) + (oy === 5 ? 1 : 0) < 5) {
-            const x = tx + ox, y = base + oy, z = tz + oz;
-            if (!getBlock(x, y, z)) setBlockData(x, y, z, 'leaves');
-          }
-        }
-      }
-    }
-  }
-}
 // Chargement initial autour du point de départ (les autres chunks seront chargés à l'approche).
 const groundY = heightAt(0, 10) + 2.7;
 camera.position.set(0, groundY, 10);
@@ -1056,8 +1056,7 @@ spawnAnimals();
 // Oriente légèrement la vue vers le terrain pour rendre le monde visible dès le démarrage.
 camera.rotation.order = 'YXZ';
 camera.rotation.x = -0.65;
-// Construction explicite des 64 chunks au démarrage : évite un monde vide si
-// le calcul de proximité ne s'initialise pas correctement sur certains mobiles.
+// Construction initiale des chunks autour du joueur.
 for (let initialCx = -4; initialCx <= 3; initialCx++) {
   for (let initialCz = -4; initialCz <= 3; initialCz++) {
     rebuildChunk(initialCx, initialCz);
@@ -1259,7 +1258,7 @@ addEventListener('resize', () => {
 document.querySelector('#loading').classList.add('done');
 const debugStatus = document.querySelector('#debug-status');
 debugStatus.hidden = false;
-debugStatus.textContent = 'Moteur 3D actif · ' + blocks.size.toLocaleString('fr-FR') + ' blocs · ' + chunks.size + ' zones · ' + [...chunks.values()].reduce((total, meshes) => total + meshes.length, 0) + ' groupes 3D';
+debugStatus.textContent = 'Moteur 3D actif · ' + blocks.size.toLocaleString('fr-FR') + ' modifications · ' + chunks.size + ' zones · ' + [...chunks.values()].reduce((total, meshes) => total + meshes.length, 0) + ' groupes 3D';
 document.querySelector('#hint').textContent = isMobile
   ? 'Joystick : bouger · Glisse à droite : regarder · ⛏ miner · ＋ placer'
   : 'Clique dans le monde pour jouer · WASD pour bouger · Espace pour sauter';
