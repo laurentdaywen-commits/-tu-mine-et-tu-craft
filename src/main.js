@@ -1203,8 +1203,8 @@ function update(dt) {
 
   // Déplacement horizontal bloqué uniquement par les blocs réellement présents.
   const feetBeforeMove = camera.position.y - 1.65;
-  const moveX = right.x * side * 5.5 * dt + direction.x * forward * 5.5 * dt;
-  const moveZ = right.z * side * 5.5 * dt + direction.z * forward * 5.5 * dt;
+  const moveX = right.x * side * 7.15 * dt + direction.x * forward * 7.15 * dt;
+  const moveZ = right.z * side * 7.15 * dt + direction.z * forward * 7.15 * dt;
   const nextX = THREE.MathUtils.clamp(camera.position.x + moveX, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
   const nextZ = THREE.MathUtils.clamp(camera.position.z + moveZ, WORLD_MIN + 0.8, WORLD_MAX - 0.8);
   if (canOccupyPlayer(nextX, camera.position.z, feetBeforeMove)) camera.position.x = nextX;
