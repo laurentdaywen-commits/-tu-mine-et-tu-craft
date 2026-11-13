@@ -94,3 +94,31 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .seed-tools input { width:125px; min-width:0; padding:6px; border:1px solid #aaa; border-radius:4px; font:12px system-ui,sans-serif; }
 .seed-tools button { padding:6px 8px; border:1px solid #ddd; border-radius:4px; background:#e8e8e8; color:#222; font:600 11px system-ui,sans-serif; }
 @media (pointer:coarse) and (orientation:landscape) { #world-seed-panel { top:48px; left:8px; font-size:10px; padding:4px 6px; } #debug-status { top:34px; } }
+
+
+/* Écran d'accueil : paysage voxel discret avant le lancement du monde. */
+#welcome-screen { position:absolute; inset:0; z-index:20; overflow:hidden; display:grid; place-items:center; isolation:isolate; color:#fff; background:#79bce8; }
+.welcome-sky { position:absolute; inset:0; z-index:-5; background:linear-gradient(180deg,#62b5e9 0%,#a6d9f2 62%,#d6e9b3 100%); }
+.welcome-sun { position:absolute; width:clamp(58px,9vw,104px); aspect-ratio:1; border-radius:4px; right:15%; top:12%; background:#fff2ad; box-shadow:0 0 55px #fff5a6aa; }
+.welcome-cloud { position:absolute; height:20px; width:100px; background:#ffffffa8; box-shadow:24px -16px 0 0 #ffffffa8,48px 0 0 0 #ffffffa8,24px 4px 0 8px #ffffffa8; opacity:.72; }
+.cloud-one { top:22%; left:12%; transform:scale(1.15); }
+.cloud-two { top:34%; right:16%; transform:scale(.72); }
+.welcome-hills { position:absolute; z-index:-2; left:-5%; right:-5%; bottom:-2px; height:48%; }
+.welcome-hill { position:absolute; bottom:0; width:110%; height:100%; clip-path:polygon(0 48%,12% 48%,12% 34%,25% 34%,25% 18%,42% 18%,42% 32%,56% 32%,56% 12%,72% 12%,72% 30%,86% 30%,86% 43%,100% 43%,100% 100%,0 100%); }
+.hill-back { background:#72a85d; transform:translateY(-18px) scaleX(1.08); opacity:.8; }
+.hill-front { background:linear-gradient(180deg,#72b64c 0 28%,#76553a 28% 100%); clip-path:polygon(0 34%,18% 34%,18% 22%,38% 22%,38% 42%,58% 42%,58% 18%,78% 18%,78% 34%,100% 34%,100% 100%,0 100%); }
+.welcome-tree { position:absolute; z-index:-1; bottom:23%; width:24px; height:100px; background:#79502f; image-rendering:pixelated; }
+.welcome-tree i,.welcome-tree b { position:absolute; display:block; background:#397d38; width:74px; height:48px; left:-25px; top:-35px; box-shadow:0 -20px 0 -8px #4b963f,18px 18px 0 -5px #2f6d32; }
+.welcome-tree b { width:46px; height:36px; left:-11px; top:-62px; }
+.tree-left { left:13%; transform:scale(1.05); }
+.tree-right { right:12%; transform:scale(.82); }
+.welcome-content { position:relative; z-index:2; width:min(92%,650px); padding:clamp(22px,5vw,48px); text-align:center; border:1px solid #ffffff55; border-radius:12px; background:linear-gradient(180deg,#183b32a8,#15271bc9); box-shadow:0 14px 50px #173b2c44; backdrop-filter:blur(3px); }
+.welcome-eyebrow { margin-bottom:10px; color:#d7f0c3; font-size:clamp(10px,1.8vw,14px); font-weight:800; letter-spacing:4px; }
+.welcome-content h1 { margin:0; color:#fff; font-size:clamp(38px,8.5vw,76px); line-height:.98; font-weight:1000; letter-spacing:1px; text-shadow:4px 5px 0 #355c32,7px 8px 0 #182d20; }
+.welcome-content p { margin:20px 0 24px; font-size:clamp(13px,2.4vw,18px); color:#e5f4dc; text-shadow:1px 2px 2px #203c26; }
+#welcome-play { min-width:190px; padding:14px 36px; border:3px solid #d7f3c1; border-radius:5px; color:#fff; background:linear-gradient(#78bd4e,#4d8e35); box-shadow:inset 0 -5px 0 #32652b,0 5px 0 #243e26,0 10px 20px #0004; font:900 22px system-ui,sans-serif; letter-spacing:2px; cursor:pointer; text-shadow:1px 2px 0 #31552b; }
+#welcome-play:active { transform:translateY(4px); box-shadow:inset 0 -2px 0 #32652b,0 1px 0 #243e26; }
+#welcome-play:disabled { opacity:.8; cursor:wait; }
+.welcome-footer { position:absolute; z-index:2; bottom:18px; width:100%; text-align:center; color:#f2ffe9; font-size:12px; font-weight:700; letter-spacing:1px; text-shadow:1px 2px 3px #244b2b; }
+#welcome-screen.welcome-leaving { opacity:0; transition:opacity .4s ease; pointer-events:none; }
+@media (max-height:520px) { .welcome-content { padding:14px 24px; } .welcome-content h1 { font-size:clamp(32px,7vh,52px); } .welcome-content p { margin:10px 0 14px; } #welcome-play { padding:9px 30px; } .welcome-hills { height:38%; } .welcome-tree { bottom:18%; transform:scale(.72); } }
