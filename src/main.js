@@ -254,6 +254,9 @@ function makeBlockTexture(type, face) {
     sugar_cane: ['#6cae45', '#8bc65a', '#4f8f35', '#b2d978'],
     flower_red: ['#4f8f2d', '#d94b45', '#f2d6b5', '#3d7626'],
     flower_yellow: ['#4f8f2d', '#f1cf3a', '#fff0a0', '#3d7626'],
+    flower_white: ['#4f8f2d', '#f5f1e5', '#d9d4c8', '#3d7626'],
+    flower_blue: ['#4f8f2d', '#3977d5', '#8fb8f0', '#3d7626'],
+    flower_pink: ['#4f8f2d', '#e58aa9', '#f5c1d2', '#3d7626'],
     bee_nest: ['#b77a35', '#d5a04d', '#8d5728', '#e5bd72']
   };
   const palette = palettes[type] || palettes.stone;
@@ -369,10 +372,10 @@ function makeBlockTexture(type, face) {
     pixel(0,0,'#6cae45',16,16);
     for(let x=2;x<16;x+=4) pixel(x,0,'#b2d978',1,16);
     speckle(['#8bc65a','#4f8f35','#b2d978'],24,1,1);
-  } else if (type === 'flower_red' || type === 'flower_yellow') {
+  } else if (type.startsWith('flower_')) {
     pixel(0,0,'#4f8f2d',16,16);
     for(let y=5;y<16;y+=3) pixel(7,y,'#397b2b',2,3);
-    const petal=type==='flower_red'?'#d94b45':'#f1cf3a';
+    const petal=({flower_red:'#d94b45',flower_yellow:'#f1cf3a',flower_white:'#f5f1e5',flower_blue:'#3977d5',flower_pink:'#e58aa9'})[type];
     pixel(6,3,petal,4,4); pixel(4,5,petal,3,3); pixel(9,5,petal,3,3);
     pixel(7,6,'#f6df78',2,2);
   } else if (type === 'bee_nest') {
@@ -419,6 +422,9 @@ const materials = {
   sugar_cane: makeBlockMaterials('sugar_cane'),
   flower_red: makeBlockMaterials('flower_red'),
   flower_yellow: makeBlockMaterials('flower_yellow'),
+  flower_white: makeBlockMaterials('flower_white'),
+  flower_blue: makeBlockMaterials('flower_blue'),
+  flower_pink: makeBlockMaterials('flower_pink'),
   bee_nest: makeBlockMaterials('bee_nest'),
   // Eau moins transparente et écrivant dans le depth buffer :
   // évite les couches et les faces arrière visibles à travers les volumes d'eau.
@@ -773,8 +779,10 @@ function proceduralBlock(x, y, z) {
   if (biome === 'plains' && y > h) {
     const fx = Math.floor((x + (WORLD_SEED % 5)) / 5) * 5 - (WORLD_SEED % 5);
     const fz = Math.floor((z + ((WORLD_SEED >>> 9) % 5)) / 5) * 5 - ((WORLD_SEED >>> 9) % 5);
-    if (x === fx && z === fz && y === heightAt(fx,fz) + 1 && worldHash(fx,fz,981) > 0.43)
-      return worldHash(fx,fz,983) > 0.5 ? 'flower_red' : 'flower_yellow';
+    if (x === fx && z === fz && y === heightAt(fx,fz) + 1 && worldHash(fx,fz,981) > 0.43) {
+      const flowerRoll = worldHash(fx,fz,983);
+      return flowerRoll < 0.2 ? 'flower_red' : flowerRoll < 0.4 ? 'flower_yellow' : flowerRoll < 0.6 ? 'flower_white' : flowerRoll < 0.8 ? 'flower_blue' : 'flower_pink';
+    }
   }
   // Nids d'abeilles accrochés aux troncs de chênes des plaines.
   if (biome === 'plains') {
