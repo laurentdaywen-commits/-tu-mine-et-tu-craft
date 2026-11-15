@@ -639,7 +639,9 @@ function heightAt(x, z) {
   // Relief et altitude varient selon le biome, sans casser la génération par chunks.
   const offsetX = (WORLD_SEED & 0xffff) / 65535 * 1000;
   const offsetZ = ((WORLD_SEED >>> 16) & 0xffff) / 65535 * 1000;
-  const biome = biomeAt(x, z);\n  const villageBlock = villageBlockAt(x,y,z);\n  if (villageBlock) return villageBlock;
+  const biome = biomeAt(x, z);
+  const villageBlock = villageBlockAt(x,y,z);
+  if (villageBlock) return villageBlock;
   const broad = smoothNoise((x + offsetX) / 34, (z + offsetZ) / 34, 11) * (biome === 'mountains' ? 10 : 7);
   const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * (biome === 'mountains' ? 6 : 4.2);
   const detail = smoothNoise((x + offsetX) / 5, (z + offsetZ) / 5, 37) * 1.8;
@@ -680,7 +682,8 @@ function villageBlockAt(x,y,z){
  if(lx>=9&&lx<=13&&Math.abs(lz)<=3&&y===ground+1&&(lx===9||lx===13||Math.abs(lz)===3))return 'wood';
  return undefined;
 }
-\nfunction proceduralBlock(x, y, z) {
+
+function proceduralBlock(x, y, z) {
   if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < WORLD_BOTTOM || y > 24) return undefined;
   const h = heightAt(x, z);
   const biome = biomeAt(x, z);
@@ -1280,13 +1283,15 @@ function spawnAmbientMobs(){
  }
 }
 function updateAmbientMobs(dt){for(const mob of ambientMobs){mob.phase+=dt*(mob.kind==='bat'?5:1.5);mob.group.position.y=mob.y+Math.sin(mob.phase)*(mob.kind==='bat'?.18:.025);if(mob.kind==='bat')mob.group.rotation.z=Math.sin(mob.phase*1.7)*.2;}}
-\n// Terrain, grottes, minerais et arbres générés à la demande lors du chargement
+
+// Terrain, grottes, minerais et arbres générés à la demande lors du chargement
 // des chunks. La taille totale du monde n'augmente pas l'utilisation mémoire.
 
 // Chargement initial autour du point de départ (les autres chunks seront chargés à l'approche).
 const groundY = heightAt(0, 10) + 2.7;
 camera.position.set(0, groundY, 10);
-spawnAnimals();\nspawnAmbientMobs();
+spawnAnimals();
+spawnAmbientMobs();
 // Oriente légèrement la vue vers le terrain pour rendre le monde visible dès le démarrage.
 camera.rotation.order = 'YXZ';
 camera.rotation.x = -0.65;
@@ -1474,7 +1479,8 @@ function update(dt) {
     stepTimer = 0;
   }
 
-  updateAnimals(dt);\n  updateAmbientMobs(dt);
+  updateAnimals(dt);
+  updateAmbientMobs(dt);
 }
 function animate() {
   requestAnimationFrame(animate);
