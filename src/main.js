@@ -247,7 +247,10 @@ function makeBlockTexture(type, face) {
     coal: ['#7d7d7d', '#252525', '#171717', '#353535'],
     iron: ['#7d7d7d', '#c1aa91', '#d8c5ad', '#8f806f'],
     gold: ['#7d7d7d', '#e6bd27', '#f6d84b', '#b58a18'],
-    diamond: ['#7d7d7d', '#36c9c7', '#8af1e8', '#168f9a']
+    diamond: ['#7d7d7d', '#36c9c7', '#8af1e8', '#168f9a'],
+    cactus: ['#287d35', '#3e9846', '#1f682b', '#58aa55'],
+    dead_bush: ['#8b6338', '#a77a45', '#6f4a2a', '#c09354'],
+    suspicious_sand: ['#d9c27b', '#e8d493', '#c9b16d', '#f0dfa3']
   };
   const palette = palettes[type] || palettes.stone;
   const fillNoise = (colors, count, minW = 1, maxW = 2) => {
@@ -348,6 +351,16 @@ function makeBlockTexture(type, face) {
         pixel(x,y,random()>.5?'#704522':'#c18a4b',1,2+Math.floor(random()*3));
       }
     }
+  } else if (type === 'cactus') {
+    pixel(0,0,'#287d35',16,16);
+    for(let x=2;x<16;x+=4) pixel(x,0,'#b6d88a',1,16);
+    speckle(['#3e9846','#1f682b','#58aa55','#1d5d28'],35,1,1);
+  } else if (type === 'dead_bush') {
+    pixel(0,0,'#8b6338',16,16);
+    speckle(['#a77a45','#6f4a2a','#c09354','#76502e'],45,1,2);
+  } else if (type === 'suspicious_sand') {
+    pixel(0,0,'#d9c27b',16,16);
+    speckle(['#e8d493','#c9b16d','#f0dfa3','#bda568'],42,1,2);
   } else if (type === 'leaves') {
     pixel(0,0,'#347d20',16,16);
     speckle(['#3f8f25','#4b9c2b','#2f701e','#58a832','#438c27','#28691c'],100,1,2);
@@ -381,7 +394,10 @@ const materials = {
   coal: makeBlockMaterials('coal'),
   iron: makeBlockMaterials('iron'),
   gold: makeBlockMaterials('gold'),
-  diamond: makeBlockMaterials('diamond')
+  diamond: makeBlockMaterials('diamond'),
+  cactus: makeBlockMaterials('cactus'),
+  dead_bush: makeBlockMaterials('dead_bush'),
+  suspicious_sand: makeBlockMaterials('suspicious_sand')
 };
 
 const blockNames = Object.keys(materials);
@@ -636,6 +652,21 @@ function proceduralBlock(x, y, z) {
       else if (oreRoll > 0.965) type = 'iron';
       else if (oreRoll > 0.935) type = 'coal';
     }
+  }
+  // Végétation du désert : cactus en petites colonnes et buissons morts,
+  // placés de façon déterministe à partir de la graine du monde.
+  if (!type && biome === 'desert' && y > h) {
+    const cactusX = Math.floor((x + (WORLD_SEED % 9)) / 9) * 9 - (WORLD_SEED % 9);
+    const cactusZ = Math.floor((z + ((WORLD_SEED >>> 8) % 11)) / 11) * 11 - ((WORLD_SEED >>> 8) % 11);
+    const cactusBase = heightAt(cactusX, cactusZ);
+    const cactusRoll = worldHash(cactusX, cactusZ, 901);
+    if (x === cactusX && z === cactusZ && cactusRoll > 0.78 && y > cactusBase && y <= cactusBase + 1 + Math.floor(worldHash(cactusX, cactusZ, 903) * 3)) {
+      return 'cactus';
+    }
+    const bushX = Math.floor((x + (WORLD_SEED % 13)) / 13) * 13 - (WORLD_SEED % 13);
+    const bushZ = Math.floor((z + ((WORLD_SEED >>> 12) % 13)) / 13) * 13 - ((WORLD_SEED >>> 12) % 13);
+    if (x === bushX && z === bushZ && y === heightAt(bushX, bushZ) + 1 &&
+        worldHash(bushX, bushZ, 907) > 0.68) return 'dead_bush';
   }
   if (!type) {
     const ox = WORLD_SEED % 6;
