@@ -583,12 +583,15 @@ function smoothNoise(x, z, salt = 0) {
   return THREE.MathUtils.lerp(top, bottom, sz) * 2 - 1;
 }
 function biomeAt(x, z) {
-  // Grandes régions climatiques : les frontières sont adoucies par le bruit interpolé.
+  // Les biomes classiques gardent de grandes régions climatiques.
   const temperature = smoothNoise(x / 210, z / 210, 151);
   const humidity = smoothNoise(x / 175, z / 175, 157);
   const relief = smoothNoise(x / 260, z / 260, 163);
+  // Les zones enneigées utilisent un bruit plus resserré et un seuil plus froid :
+  // elles forment ainsi de petites poches isolées au lieu de vastes continents.
+  const snowTemperature = smoothNoise(x / 82, z / 82, 151);
   if (relief > 0.48) return 'mountains';
-  if (temperature < -0.28) return 'snowy';
+  if (snowTemperature < -0.56) return 'snowy';
   if (temperature > 0.24 && humidity < 0.02) return 'desert';
   if (humidity > 0.20) return 'forest';
   return 'plains';
