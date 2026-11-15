@@ -459,6 +459,45 @@ const tuftMaterial = new THREE.MeshLambertMaterial({
   map: tuftTexture, transparent: true, alphaTest: 0.35,
   side: THREE.DoubleSide, depthWrite: false
 });
+// Textures de fleurs en brins, dessinées en pixels comme les touffes d'herbe.
+const flowerSpriteMaterials = {};
+function getFlowerSpriteMaterial(type) {
+  if (flowerSpriteMaterials[type]) return flowerSpriteMaterials[type];
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+  const colors = {
+    flower_red: '#d94b45', flower_yellow: '#f1cf3a', flower_white: '#f5f1e5',
+    flower_blue: '#3977d5', flower_pink: '#e58aa9'
+  };
+  const petal = colors[type] || '#f1cf3a';
+  ctx.fillStyle = '#4f8f2d';
+  ctx.fillRect(7, 8, 2, 8);
+  ctx.fillStyle = '#6eae3d';
+  ctx.fillRect(6, 6, 2, 7);
+  ctx.fillRect(8, 5, 2, 8);
+  ctx.fillStyle = '#83c94b';
+  ctx.fillRect(5, 8, 2, 3);
+  ctx.fillRect(9, 9, 2, 3);
+  // Petite corolle en pixels au sommet de la tige.
+  ctx.fillStyle = petal;
+  ctx.fillRect(6, 1, 4, 3);
+  ctx.fillRect(4, 3, 3, 3);
+  ctx.fillRect(9, 3, 3, 3);
+  ctx.fillRect(6, 5, 4, 2);
+  ctx.fillStyle = type === 'flower_white' ? '#e8c94c' : '#f8df78';
+  ctx.fillRect(7, 3, 2, 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  flowerSpriteMaterials[type] = new THREE.MeshLambertMaterial({
+    map: texture, transparent: true, alphaTest: 0.35,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+  return flowerSpriteMaterials[type];
+}
 
 // Bras du joueur en vue subjective, attaché à la caméra comme dans Minecraft.
 const firstPersonArm = new THREE.Group();
@@ -850,12 +889,14 @@ function rebuildChunk(cx, cz) {
   for (const mesh of oldMeshes) scene.remove(mesh);
 
   const grouped = Object.fromEntries(blockNames.map(type => [type, []]));
+  const flowerPositions = Object.fromEntries(['flower_red','flower_yellow','flower_white','flower_blue','flower_pink'].map(type => [type, []]));
   const minX = cx * CHUNK_SIZE, minZ = cz * CHUNK_SIZE;
   for (let x = minX; x < minX + CHUNK_SIZE; x++) {
     for (let z = minZ; z < minZ + CHUNK_SIZE; z++) {
       for (let y = WORLD_BOTTOM; y <= 24; y++) {
         const type = getBlock(x, y, z);
-        if (type) grouped[type].push([x, y, z]);
+        if (type && flowerPositions[type]) flowerPositions[type].push([x, y, z]);
+        else if (type) grouped[type].push([x, y, z]);
       }
     }
   }
@@ -885,6 +926,30 @@ function rebuildChunk(cx, cz) {
     mesh.computeBoundingSphere();
     scene.add(mesh);
     meshes.push(mesh);
+  }
+  // Fleurs : brins fins avec tiges et corolles, sans cube plein autour.
+  for (const [type, positions] of Object.entries(flowerPositions)) {
+    if (!positions.length) continue;
+    const flowerMesh = new THREE.InstancedMesh(getFlowerSpriteMaterial(type), tuftGeometry, positions.length * 2);
+    flowerMesh.name = `flower-sprites-${type}`;
+    flowerMesh.castShadow = false;
+    flowerMesh.receiveShadow = false;
+    flowerMesh.frustumCulled = false;
+    let index = 0;
+    for (const [x, y, z] of positions) {
+      const scale = 0.92 + worldHash(x, z, 991) * 0.22;
+      const rotation = worldHash(x, z, 992) * Math.PI;
+      for (let side = 0; side < 2; side++) {
+        dummy.position.set(x, y + 0.5 + 0.36 * scale, z);
+        dummy.rotation.set(0, rotation + side * Math.PI / 2, 0);
+        dummy.scale.set(scale, scale, scale);
+        dummy.updateMatrix();
+        flowerMesh.setMatrixAt(index++, dummy.matrix);
+      }
+    }
+    flowerMesh.instanceMatrix.needsUpdate = true;
+    scene.add(flowerMesh);
+    meshes.push(flowerMesh);
   }
   // Herbe haute : touffes générées de façon pseudo-aléatoire sur les surfaces
   // d'herbe libres. La graine du monde garantit une répartition stable pendant la partie.
