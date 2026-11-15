@@ -623,7 +623,8 @@ function biomeAt(x, z) {
   if (humidity > 0.20) return 'forest';
   return 'plains';
 }
-const SEA_LEVEL = 8;
+const SEA_LEVEL = 0;
+const WORLD_BOTTOM = -8;
 // Océans larges, rivières sinueuses et petits lacs : entièrement déterminés par la graine.
 function waterBodyAt(x, z) {
   const ocean = smoothNoise(x / 330, z / 330, 421) > 0.48;
@@ -645,14 +646,19 @@ function heightAt(x, z) {
   const uplift = biome === 'mountains' ? 7 : biome === 'desert' ? -1 : 0;
   const landHeight = THREE.MathUtils.clamp(Math.floor(6 + uplift + broad + hills + detail), 1, 22);
   // Fond abaissé sous le niveau marin pour former de vrais bassins remplis d'eau.
-  return waterBodyAt(x, z) ? Math.min(landHeight, SEA_LEVEL - 2) : landHeight;
+  if (waterBodyAt(x, z)) return SEA_LEVEL - 3;
+  // Les berges sont au même niveau que la surface de l'eau : aucune marche
+  // verticale entre le sol et l'eau. Le terrain remonte ensuite naturellement.
+  const besideWater = [[1,0],[-1,0],[0,1],[0,-1]]
+    .some(([dx,dz]) => waterBodyAt(x + dx, z + dz));
+  return besideWater ? SEA_LEVEL : landHeight;
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
   saveWorldChanges();
 }
 function proceduralBlock(x, y, z) {
-  if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < 0 || y > 24) return undefined;
+  if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < WORLD_BOTTOM || y > 24) return undefined;
   const h = heightAt(x, z);
   const biome = biomeAt(x, z);
   let type;
@@ -762,7 +768,7 @@ function rebuildChunk(cx, cz) {
   const minX = cx * CHUNK_SIZE, minZ = cz * CHUNK_SIZE;
   for (let x = minX; x < minX + CHUNK_SIZE; x++) {
     for (let z = minZ; z < minZ + CHUNK_SIZE; z++) {
-      for (let y = 0; y <= 24; y++) {
+      for (let y = WORLD_BOTTOM; y <= 24; y++) {
         const type = getBlock(x, y, z);
         if (type) grouped[type].push([x, y, z]);
       }
@@ -801,7 +807,7 @@ function rebuildChunk(cx, cz) {
   for (let x = minX; x < minX + CHUNK_SIZE; x++) {
     for (let z = minZ; z < minZ + CHUNK_SIZE; z++) {
       let topY = -1;
-      for (let y = 24; y >= 0; y--) {
+      for (let y = 24; y >= WORLD_BOTTOM; y--) {
         if (getBlock(x, y, z)) { topY = y; break; }
       }
       if (topY < 0 || getBlock(x, topY, z) !== 'grass' || getBlock(x, topY + 1, z)) continue;
@@ -858,14 +864,14 @@ function refreshChunksAroundPlayer() {
   }
 }
 function addBlock(x, y, z, type) {
-  if (y < 0 || y > 24 || x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX) return false;
+  if (y < WORLD_BOTTOM || y > 24 || x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX) return false;
   if (getBlock(x, y, z)) return false;
   setBlockData(x, y, z, materials[type] ? type : 'grass');
   rebuildAt(x, z);
   return true;
 }
 function removeBlockAt(x, y, z) {
-  if (y <= 0) return false;
+  if (y <= WORLD_BOTTOM) return false;
   const minedType = getBlock(x, y, z);
   if (!minedType) return false;
   // Les blocs ordinaires sont récoltés comme blocs ; les minerais donnent uniquement leur ressource.
