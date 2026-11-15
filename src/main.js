@@ -1185,7 +1185,7 @@ function spawnAnimals() {
       if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 8)) continue;
       const biome = biomeAt(x, z);
       const type = biome === 'desert'
-        ? (worldHash(i, attempt, 811) > 0.48 ? 'camel' : 'rabbit')
+        ? 'rabbit'
         : types[Math.floor(worldHash(i, attempt, 811) * types.length)];
       const group = makeAnimal(type);
       group.position.set(x, ground, z);
@@ -1270,7 +1270,8 @@ function makeAmbientMob(kind){
 }
 function spawnAmbientMobs(){
  const add=(kind,x,y,z,s)=>{const group=makeAmbientMob(kind);group.position.set(x,y,z);scene.add(group);ambientMobs.push({kind,group,y,phase:worldHash(x,z,s)*6});};
- for(let x=-90;x<=90;x+=97)for(let z=-90;z<=90;z+=97){const v=villageCenterFor(x,z);if(!v)continue;const y=heightAt(v.x,v.z)+1;add('villager',v.x+3,y,v.z+3,1401);add('villager',v.x-3,y,v.z-3,1403);add('iron_golem',v.x+5,y,v.z,1405);add('cat',v.x-5,y,v.z+2,1407);}
+ for(let x=-90;x<=90;x+=97)for(let z=-90;z<=90;z+=97){const v=villageCenterFor(x,z);if(!v)continue;const y=heightAt(v.x,v.z)+1;add('villager',v.x+3,y,v.z+3,1401);add('villager',v.x-3,y,v.z-3,1403);add('iron_golem',v.x+5,y,v.z,1405);add('cat',v.x-5,y,v.z+2,1407);
+  if(v.biome==='desert'){const camel=makeAnimal('camel');camel.position.set(v.x+1,y,v.z-5);scene.add(camel);animals.push({group:camel,type:'camel',targetX:v.x+1,targetZ:v.z-5,timer:2,phase:0,callTimer:30,speed:.58});}}
  let count=0;
  for(let x=-22;x<=22&&count<10;x+=2)for(let z=-22;z<=22&&count<10;z+=3)for(let y=2;y<=6&&count<10;y++){
   if(getBlock(x,y,z)!==undefined||getBlock(x,y+1,z)!==undefined)continue;
