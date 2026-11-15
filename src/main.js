@@ -753,6 +753,22 @@ function proceduralBlock(x, y, z) {
     // La canne à sucre pousse au bord de l'eau, notamment dans les déserts.
     if (y > h && y <= h + 3 && getBlockSafeWaterEdge(x, z)) return 'sugar_cane';
   }
+  // Avant-poste de pillards déserté dans les plaines : structure seule, sans pillards ni créatures hostiles.
+  if (biome === 'plains') {
+    const ox = WORLD_SEED % 131, oz = (WORLD_SEED >>> 8) % 131;
+    const px = Math.floor((x + ox) / 131) * 131 - ox;
+    const pz = Math.floor((z + oz) / 131) * 131 - oz;
+    if (biomeAt(px, pz) === 'plains' && worldHash(px, pz, 971) > 0.90) {
+      const dx = Math.abs(x - px), dz = Math.abs(z - pz);
+      const base = heightAt(px, pz), layer = y - base;
+      if (dx <= 2 && dz <= 2 && layer >= 1 && layer <= 6) {
+        if (layer === 1 || dx === 2 || dz === 2) return 'wood';
+      }
+      if (layer >= 1 && layer <= 7 && dx <= 3 && dz <= 3 &&
+          (dx === 3 || dz === 3) && (dx === 3 && dz === 3)) return 'wood';
+      if (layer === 1 && dx <= 4 && dz <= 4 && (dx === 4 || dz === 4)) return 'stone';
+    }
+  }
   if (!type) {
     const ox = WORLD_SEED % 6;
     const oz = (WORLD_SEED >>> 8) % 7;
@@ -1279,7 +1295,7 @@ function spawnAmbientMobs(){
  for(let x=-22;x<=22&&count<10;x+=2)for(let z=-22;z<=22&&count<10;z+=3)for(let y=2;y<=6&&count<10;y++){
   if(getBlock(x,y,z)!==undefined||getBlock(x,y+1,z)!==undefined)continue;
   const floor=getBlock(x,y-1,z);if(!floor||!['stone','dirt'].includes(floor))continue;
-  const r=worldHash(x+y,z,1411),kind=r<.34?'bat':r<.67?'slime':'glow_squid';add(kind,x,y+.3,z,1413);count++;break;
+  const r=worldHash(x+y,z,1411),kind=r<.5?'bat':'glow_squid';add(kind,x,y+.3,z,1413);count++;break;
  }
 }
 function updateAmbientMobs(dt){for(const mob of ambientMobs){mob.phase+=dt*(mob.kind==='bat'?5:1.5);mob.group.position.y=mob.y+Math.sin(mob.phase)*(mob.kind === 'bat' ? 0.18 : 0.025);if(mob.kind==='bat')mob.group.rotation.z=Math.sin(mob.phase*1.7)*.2;}}
