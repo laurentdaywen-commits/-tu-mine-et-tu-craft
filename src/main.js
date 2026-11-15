@@ -930,7 +930,7 @@ function rebuildChunk(cx, cz) {
   // Fleurs : brins fins avec tiges et corolles, sans cube plein autour.
   for (const [type, positions] of Object.entries(flowerPositions)) {
     if (!positions.length) continue;
-    const flowerMesh = new THREE.InstancedMesh(getFlowerSpriteMaterial(type), tuftGeometry, positions.length * 2);
+    const flowerMesh = new THREE.InstancedMesh(tuftGeometry, getFlowerSpriteMaterial(type), positions.length * 2);
     flowerMesh.name = `flower-sprites-${type}`;
     flowerMesh.castShadow = false;
     flowerMesh.receiveShadow = false;
