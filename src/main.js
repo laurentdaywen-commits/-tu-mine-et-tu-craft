@@ -903,7 +903,7 @@ function canOccupyPlayer(x, z, feetY) {
 // Animaux pacifiques : modèles cubiques légers et déplacements autonomes.
 const animals = [];
 // 12 animaux maximum, répartis dans les secteurs de la carte.
-const MAX_ANIMALS = 12;
+const MAX_ANIMALS = 16;
 // Textures animales pixelisées 16x16, dans l'esprit des textures Minecraft.
 const animalTextureCache = new Map();
 function makeAnimalTexture(type, part) {
@@ -936,6 +936,18 @@ function makeAnimalTexture(type, part) {
       head: ['#f7f3e9', '#e7e1d5', '#fffdf5'],
       wing: ['#d8d4c9', '#c5c0b5', '#eee9df'],
       legs: ['#d99a35', '#bd7924', '#efbd51']
+    },
+    rabbit: {
+      body: ['#b78a5b', '#9b7048', '#d4b18a'],
+      head: ['#c69b6c', '#a77b50', '#e0c09a'],
+      muzzle: ['#e5c6ae', '#c99b87', '#f1d8c6'],
+      legs: ['#9b7048', '#7c5738', '#c49a70']
+    },
+    camel: {
+      body: ['#bd925e', '#a77b49', '#d7b17c'],
+      head: ['#c9a06a', '#a77b49', '#e0bd89'],
+      muzzle: ['#d4ad7b', '#b78e5e', '#e5c89a'],
+      legs: ['#a77b49', '#89633d', '#c49a68']
     }
   };
   const p = palettes[type][part] || palettes[type].body;
@@ -955,6 +967,11 @@ function makeAnimalTexture(type, part) {
         ctx.fillStyle = p[2];
         ctx.fillRect(x, y, 1, 1);
       }
+    }
+  }
+  if (type === 'camel' && part === 'body') {
+    for (const [x,y] of [[3,3],[10,5],[6,11],[13,13]]) {
+      ctx.fillStyle = p[1]; ctx.fillRect(x,y,2,2);
     }
   }
   if (type === 'cow' && part === 'body') {
@@ -981,7 +998,7 @@ function makeAnimalTexture(type, part) {
   return texture;
 }
 const animalMaterials = {};
-for (const type of ['cow', 'pig', 'sheep', 'chicken']) {
+for (const type of ['cow', 'pig', 'sheep', 'chicken', 'rabbit', 'camel']) {
   animalMaterials[type] = {};
   const parts = type === 'cow' ? ['body','head','muzzle','legs'] :
     type === 'pig' ? ['body','head','muzzle','legs'] :
@@ -1062,6 +1079,24 @@ function makeAnimal(type) {
     animalPart(group, m.head, -0.34, 1.25, 0.91, 0.18, 0.13, 0.24);
     animalPart(group, m.head, 0.34, 1.25, 0.91, 0.18, 0.13, 0.24);
     addAnimalEyes(group, m.eye, 0, 1.17, 1.225, 0.145, 0.065);
+  } else if (type === 'rabbit') {
+    animalPart(group, m.body, 0, 0.48, 0, 0.52, 0.52, 0.78);
+    animalPart(group, m.head, 0, 0.78, 0.38, 0.42, 0.42, 0.42);
+    animalPart(group, m.muzzle, 0, 0.68, 0.60, 0.22, 0.15, 0.08);
+    animalPart(group, m.head, -0.12, 1.12, 0.38, 0.10, 0.42, 0.12);
+    animalPart(group, m.head, 0.12, 1.12, 0.38, 0.10, 0.42, 0.12);
+    animalPart(group, m.eye, -0.16, 0.84, 0.58, 0.06, 0.06, 0.035);
+    animalPart(group, m.eye, 0.16, 0.84, 0.58, 0.06, 0.06, 0.035);
+    animalPart(group, m.body, 0, 0.50, -0.42, 0.22, 0.22, 0.22);
+  } else if (type === 'camel') {
+    animalPart(group, m.body, 0, 1.18, 0, 0.92, 1.05, 1.75);
+    animalPart(group, m.body, 0, 1.82, -0.28, 0.44, 0.42, 0.42);
+    animalPart(group, m.body, 0, 1.82, 0.35, 0.44, 0.42, 0.42);
+    animalPart(group, m.head, 0, 1.75, 0.98, 0.48, 0.52, 0.48);
+    animalPart(group, m.muzzle, 0, 1.58, 1.24, 0.34, 0.24, 0.20);
+    animalPart(group, m.head, -0.25, 2.03, 0.98, 0.12, 0.16, 0.12);
+    animalPart(group, m.head, 0.25, 2.03, 0.98, 0.12, 0.16, 0.12);
+    addAnimalEyes(group, m.eye, 0, 1.86, 1.20, 0.19, 0.06);
   } else {
     animalPart(group, m.body, 0, 0.72, 0, 0.62, 0.72, 0.72);
     animalPart(group, m.wing, -0.32, 0.78, -0.02, 0.16, 0.42, 0.48);
@@ -1072,10 +1107,10 @@ function makeAnimal(type) {
     animalPart(group, m.wattle, 0, 0.91, 0.53, 0.1, 0.16, 0.08);
     addAnimalEyes(group, m.eye, 0, 1.22, 0.5, 0.14, 0.055);
   }
-  const legX = type === 'chicken' ? 0.12 : (type === 'pig' ? 0.31 : 0.36);
-  const legZ = type === 'chicken' ? 0 : 0.43;
-  const legW = type === 'chicken' ? 0.09 : 0.17;
-  const legH = type === 'chicken' ? 0.38 : 0.62;
+  const legX = type === 'chicken' ? 0.12 : (type === 'pig' ? 0.31 : type === 'camel' ? 0.29 : type === 'rabbit' ? 0.17 : 0.36);
+  const legZ = type === 'chicken' ? 0 : type === 'camel' ? 0.62 : type === 'rabbit' ? 0.25 : 0.43;
+  const legW = type === 'chicken' ? 0.09 : type === 'camel' ? 0.14 : type === 'rabbit' ? 0.12 : 0.17;
+  const legH = type === 'chicken' ? 0.38 : type === 'camel' ? 1.05 : type === 'rabbit' ? 0.30 : 0.62;
   const legXs = type === 'chicken' ? [0] : [-legX, legX];
   for (const x of legXs) {
     // Les deux pattes de la poule sont alignées sous l'axe central du corps,
@@ -1083,7 +1118,10 @@ function makeAnimal(type) {
     // Les autres animaux ont quatre pattes, réparties à l'avant et à l'arrière.
     const legPositions = type === 'chicken' ? [-0.20, 0.20] : [-legZ, legZ];
     for (const z of legPositions) {
-      if (type === 'sheep') {
+      if (type === 'rabbit') {
+        const leg = animalPart(group, m.legs, x, 0.15, z, 0.12, 0.30, 0.12);
+        legs.push(leg);
+      } else if (type === 'sheep') {
         const upper = animalPart(group, m.body, x, 0.34, z, 0.17, 0.32, 0.17);
         animalPart(group, m.legs, x, 0.13, z, 0.17, 0.26, 0.17);
         animalPart(group, m.dark, x, 0.025, z + 0.012, 0.18, 0.05, 0.18);
@@ -1103,7 +1141,8 @@ function animalGroundAt(x, z) {
   const gx = Math.round(x), gz = Math.round(z);
   if (gx <= WORLD_MIN || gx >= WORLD_MAX || gz <= WORLD_MIN || gz >= WORLD_MAX) return null;
   const top = highestSolidBlock(gx, gz);
-  if (top < 0 || getBlock(gx, top, gz) !== 'grass') return null;
+  const surface = top >= 0 ? getBlock(gx, top, gz) : null;
+  if (top < 0 || !['grass', 'sand'].includes(surface)) return null;
   if (Math.abs(top - highestSolidBlock(gx + 1, gz)) > 1 ||
       Math.abs(top - highestSolidBlock(gx - 1, gz)) > 1 ||
       Math.abs(top - highestSolidBlock(gx, gz + 1)) > 1 ||
@@ -1121,7 +1160,10 @@ function spawnAnimals() {
       const ground = animalGroundAt(x, z);
       if (ground === null) continue;
       if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 8)) continue;
-      const type = types[Math.floor(worldHash(i, attempt, 811) * types.length)];
+      const biome = biomeAt(x, z);
+      const type = biome === 'desert'
+        ? (worldHash(i, attempt, 811) > 0.48 ? 'camel' : 'rabbit')
+        : types[Math.floor(worldHash(i, attempt, 811) * types.length)];
       const group = makeAnimal(type);
       group.position.set(x, ground, z);
       group.rotation.y = worldHash(i, attempt, 813) * Math.PI * 2;
@@ -1130,7 +1172,7 @@ function spawnAnimals() {
         group, type, targetX: x, targetZ: z,
         timer: worldHash(i, attempt, 815) * 3, phase: worldHash(i, attempt, 817) * Math.PI,
         callTimer: 9 + worldHash(i, attempt, 819) * 17,
-        speed: type === 'chicken' ? 1.05 : 0.72 + worldHash(i, attempt, 821) * 0.22
+        speed: type === 'chicken' || type === 'rabbit' ? 1.05 : type === 'camel' ? 0.58 : 0.72 + worldHash(i, attempt, 821) * 0.22
       });
       break;
     }
