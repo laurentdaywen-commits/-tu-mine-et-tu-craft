@@ -687,6 +687,8 @@ function proceduralBlock(x, y, z) {
   if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < WORLD_BOTTOM || y > 24) return undefined;
   const h = heightAt(x, z);
   const biome = biomeAt(x, z);
+  const villageBlock = villageBlockAt(x, y, z);
+  if (villageBlock !== undefined) return villageBlock;
   let type;
   if (waterBodyAt(x, z) && y > h && y <= SEA_LEVEL) return 'water';
   if (y <= h) {
@@ -1264,7 +1266,7 @@ function makeAmbientMob(kind){
  const g=new THREE.Group(),box=new THREE.BoxGeometry(1,1,1),color=kind==='villager'?0xb98262:kind==='iron_golem'?0xd5d1bd:kind==='cat'?0x777777:kind==='bat'?0x29252c:kind==='slime'?0x65bd45:0x40c9d5;
  const m=new THREE.MeshLambertMaterial({color,emissive:kind==='glow_squid'?0x1688a0:0,emissiveIntensity:.9}),dark=new THREE.MeshLambertMaterial({color:0x302925});
  const p=(x,y,z,sx,sy,sz,ma=m)=>{const o=new THREE.Mesh(box,ma);o.position.set(x,y,z);o.scale.set(sx,sy,sz);g.add(o);};
- if(kind==='villager'||kind==='iron_golem'){p(0,.9,0,kind==='villager'?.62:.9,1,kind==='villager'?.5:.65);p(0,1.65,.12,.55,.55,.55);p(0,1.68,.4,.3,.07,.03,dark);if(kind==='iron_golem'){p(-.58,1.1,0,.18,.9,.2);p(.58,1.1,0,.18,.9,.2);}}
+ if(kind==='villager'||kind==='iron_golem'){p(0,.9,0,kind === 'villager' ? 0.62 : 0.9,1,kind === 'villager' ? 0.5 : 0.65);p(0,1.65,.12,.55,.55,.55);p(0,1.68,.4,.3,.07,.03,dark);if(kind==='iron_golem'){p(-.58,1.1,0,.18,.9,.2);p(.58,1.1,0,.18,.9,.2);}}
  else if(kind==='cat'){p(0,.35,0,.35,.4,.7);p(0,.65,.3,.35,.35,.35);p(-.12,.95,.3,.1,.25,.1);p(.12,.95,.3,.1,.25,.1);p(.3,.45,-.4,.1,.1,.55);}
  else if(kind==='bat'){p(0,0,0,.22,.3,.25);p(-.38,0,0,.6,.08,.4);p(.38,0,0,.6,.08,.4);}
  else if(kind==='slime'){p(0,.35,0,.8,.7,.8);p(-.18,.48,.41,.09,.09,.04,dark);p(.18,.48,.41,.09,.09,.04,dark);}
@@ -1282,7 +1284,7 @@ function spawnAmbientMobs(){
   const r=worldHash(x+y,z,1411),kind=r<.34?'bat':r<.67?'slime':'glow_squid';add(kind,x,y+.3,z,1413);count++;break;
  }
 }
-function updateAmbientMobs(dt){for(const mob of ambientMobs){mob.phase+=dt*(mob.kind==='bat'?5:1.5);mob.group.position.y=mob.y+Math.sin(mob.phase)*(mob.kind==='bat'?.18:.025);if(mob.kind==='bat')mob.group.rotation.z=Math.sin(mob.phase*1.7)*.2;}}
+function updateAmbientMobs(dt){for(const mob of ambientMobs){mob.phase+=dt*(mob.kind==='bat'?5:1.5);mob.group.position.y=mob.y+Math.sin(mob.phase)*(mob.kind === 'bat' ? 0.18 : 0.025);if(mob.kind==='bat')mob.group.rotation.z=Math.sin(mob.phase*1.7)*.2;}}
 
 // Terrain, grottes, minerais et arbres générés à la demande lors du chargement
 // des chunks. La taille totale du monde n'augmente pas l'utilisation mémoire.
