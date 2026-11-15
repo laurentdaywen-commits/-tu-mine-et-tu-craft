@@ -238,6 +238,9 @@ function makeBlockTexture(type, face) {
   const palettes = {
     grass: ['#79b83b', '#70ad35', '#83c447', '#659d30', '#8bc94b'],
     dirt: ['#866043', '#795438', '#906747', '#704c34', '#9b704d'],
+    sand: ['#d9c27b', '#e8d493', '#c9b16d', '#f0dfa3'],
+    snow: ['#f3f7fa', '#dce8ef', '#ffffff', '#cbdce8'],
+    sandstone: ['#c9b276', '#d9c58d', '#b9a268', '#e4d19a'],
     stone: ['#7d7d7d', '#858585', '#747474', '#8c8c8c', '#696969'],
     wood: ['#95602f', '#a8733d', '#815027', '#b47b40', '#704522'],
     leaves: ['#3f8f25', '#347d20', '#4b9c2b', '#2f701e', '#58a832'],
@@ -286,6 +289,10 @@ function makeBlockTexture(type, face) {
         if(random()>.45) pixel(x,h, '#795438');
       }
     }
+  } else if (type === 'sand' || type === 'snow' || type === 'sandstone') {
+    const colors = type === 'sand' ? ['#d9c27b','#e8d493','#c9b16d','#f0dfa3'] : type === 'snow' ? ['#f3f7fa','#dce8ef','#ffffff','#cbdce8'] : ['#c9b276','#d9c58d','#b9a268','#e4d19a'];
+    pixel(0,0,colors[0],16,16);
+    speckle(colors, type === 'snow' ? 25 : 48, 1, 2);
   } else if (type === 'dirt') {
     pixel(0,0,'#866043',16,16);
     speckle(['#795438','#906747','#704c34','#9b704d','#67452f','#a07850'],62,1,2);
@@ -368,6 +375,9 @@ const materials = {
   stone: makeBlockMaterials('stone'),
   wood: makeBlockMaterials('wood'),
   leaves: makeBlockMaterials('leaves'),
+  sand: makeBlockMaterials('sand'),
+  snow: makeBlockMaterials('snow'),
+  sandstone: makeBlockMaterials('sandstone'),
   coal: makeBlockMaterials('coal'),
   iron: makeBlockMaterials('iron'),
   gold: makeBlockMaterials('gold'),
@@ -572,14 +582,27 @@ function smoothNoise(x, z, salt = 0) {
   const bottom = THREE.MathUtils.lerp(c, d, sx);
   return THREE.MathUtils.lerp(top, bottom, sz) * 2 - 1;
 }
+function biomeAt(x, z) {
+  // Grandes régions climatiques : les frontières sont adoucies par le bruit interpolé.
+  const temperature = smoothNoise(x / 210, z / 210, 151);
+  const humidity = smoothNoise(x / 175, z / 175, 157);
+  const relief = smoothNoise(x / 260, z / 260, 163);
+  if (relief > 0.48) return 'mountains';
+  if (temperature < -0.28) return 'snowy';
+  if (temperature > 0.24 && humidity < 0.02) return 'desert';
+  if (humidity > 0.20) return 'forest';
+  return 'plains';
+}
 function heightAt(x, z) {
-  // Relief procédural à trois échelles : plaines, collines et petites irrégularités.
+  // Relief et altitude varient selon le biome, sans casser la génération par chunks.
   const offsetX = (WORLD_SEED & 0xffff) / 65535 * 1000;
   const offsetZ = ((WORLD_SEED >>> 16) & 0xffff) / 65535 * 1000;
-  const broad = smoothNoise((x + offsetX) / 34, (z + offsetZ) / 34, 11) * 7.0;
-  const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * 4.2;
+  const biome = biomeAt(x, z);
+  const broad = smoothNoise((x + offsetX) / 34, (z + offsetZ) / 34, 11) * (biome === 'mountains' ? 10 : 7);
+  const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * (biome === 'mountains' ? 6 : 4.2);
   const detail = smoothNoise((x + offsetX) / 5, (z + offsetZ) / 5, 37) * 1.8;
-  return THREE.MathUtils.clamp(Math.floor(6 + broad + hills + detail), 1, 16);
+  const uplift = biome === 'mountains' ? 7 : biome === 'desert' ? -1 : 0;
+  return THREE.MathUtils.clamp(Math.floor(6 + uplift + broad + hills + detail), 1, 22);
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
@@ -588,9 +611,12 @@ function setBlockData(x, y, z, type) {
 function proceduralBlock(x, y, z) {
   if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < 0 || y > 24) return undefined;
   const h = heightAt(x, z);
+  const biome = biomeAt(x, z);
   let type;
   if (y <= h) {
-    type = y === h ? (h >= 10 ? 'stone' : 'grass') : y >= h - 2 ? 'dirt' : 'stone';
+    if (biome === 'desert') type = y === h ? 'sand' : y >= h - 3 ? 'sand' : y >= h - 6 ? 'sandstone' : 'stone';
+    else if (biome === 'snowy') type = y === h ? 'snow' : y >= h - 2 ? 'dirt' : 'stone';
+    else type = y === h ? (biome === 'mountains' && h >= 17 ? 'stone' : 'grass') : y >= h - 2 ? 'dirt' : 'stone';
     if (y >= 2 && y <= h - 3) {
       const ox = (WORLD_SEED % 997) * 0.013;
       const oz = (WORLD_SEED % 991) * 0.017;
@@ -615,9 +641,12 @@ function proceduralBlock(x, y, z) {
       if (Math.abs(x - tx) > 2 || tx < WORLD_MIN + 5 || tx > WORLD_MAX - 5) continue;
       for (let tz = Math.floor((z - oz) / 7) * 7 + oz - 7; tz <= z + 2; tz += 7) {
         if (Math.abs(z - tz) > 2 || tz < WORLD_MIN + 5 || tz > WORLD_MAX - 5) continue;
-        if (worldHash(tx, tz, 303) > 0.34) continue;
+        const treeBiome = biomeAt(tx, tz);
+        if (treeBiome !== 'forest' && treeBiome !== 'plains') continue;
+        const treeChance = treeBiome === 'forest' ? 0.72 : 0.13;
+        if (worldHash(tx, tz, 303) > treeChance) continue;
         const base = heightAt(tx, tz);
-        if (base >= 9) continue;
+        if (base >= 14) continue;
         const slope = Math.max(Math.abs(base - heightAt(tx + 1, tz)), Math.abs(base - heightAt(tx - 1, tz)), Math.abs(base - heightAt(tx, tz + 1)), Math.abs(base - heightAt(tx, tz - 1)));
         if (slope > 2) continue;
         if (x === tx && z === tz && y >= base + 1 && y <= base + 3) type = 'wood';
