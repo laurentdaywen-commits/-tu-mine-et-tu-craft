@@ -404,8 +404,10 @@ const materials = {
   dead_bush: makeBlockMaterials('dead_bush'),
   suspicious_sand: makeBlockMaterials('suspicious_sand'),
   sugar_cane: makeBlockMaterials('sugar_cane'),
+  // Eau moins transparente et écrivant dans le depth buffer :
+  // évite les couches et les faces arrière visibles à travers les volumes d'eau.
   water: Array.from({ length: 6 }, () => new THREE.MeshLambertMaterial({
-    color: 0x398bd0, transparent: true, opacity: 0.68, depthWrite: false
+    color: 0x287fbd, transparent: true, opacity: 0.88, depthWrite: true
   }))
 };
 
