@@ -639,7 +639,7 @@ function heightAt(x, z) {
   // Relief et altitude varient selon le biome, sans casser la génération par chunks.
   const offsetX = (WORLD_SEED & 0xffff) / 65535 * 1000;
   const offsetZ = ((WORLD_SEED >>> 16) & 0xffff) / 65535 * 1000;
-  const biome = biomeAt(x, z);
+  const biome = biomeAt(x, z);\n  const villageBlock = villageBlockAt(x,y,z);\n  if (villageBlock) return villageBlock;
   const broad = smoothNoise((x + offsetX) / 34, (z + offsetZ) / 34, 11) * (biome === 'mountains' ? 10 : 7);
   const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * (biome === 'mountains' ? 6 : 4.2);
   const detail = smoothNoise((x + offsetX) / 5, (z + offsetZ) / 5, 37) * 1.8;
@@ -657,7 +657,30 @@ function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
   saveWorldChanges();
 }
-function proceduralBlock(x, y, z) {
+function villageCenterFor(x,z){
+ const ox=WORLD_SEED%97,oz=(WORLD_SEED>>>8)%97,cx=Math.floor((x+ox)/97)*97-ox,cz=Math.floor((z+oz)/97)*97-oz;
+ if(!['plains','desert'].includes(biomeAt(cx,cz))||worldHash(cx,cz,1201)<.58)return null;
+ return {x:cx,z:cz,biome:biomeAt(cx,cz)};
+}
+function villageBlockAt(x,y,z){
+ const v=villageCenterFor(x,z);if(!v)return undefined;
+ const {x:cx,z:cz,biome}=v,mat=biome==='desert'?'sandstone':'wood',lx=x-cx,lz=z-cz,ground=heightAt(x,z);
+ if(((Math.abs(lx)<=1&&Math.abs(lz)<=10)||(Math.abs(lz)<=1&&Math.abs(lx)<=10))&&y===ground+1)return biome==='desert'?'sandstone':'dirt';
+ for(const [hx,hz] of [[-7,-7],[7,-7],[-7,7],[7,7]]){
+  const dx=x-cx-hx,dz=z-cz-hz,ax=Math.abs(dx),az=Math.abs(dz),base=heightAt(cx+hx,cz+hz),layer=y-base;
+  if(ax>3||az>3)continue;
+  if(layer===0)return mat;
+  if(layer>=1&&layer<=3&&(ax===3||az===3)){const door=dx===0&&dz===3&&layer<=2,win=ax===3&&az===1&&layer===2;if(!door&&!win)return mat;}
+  if(layer===4&&ax<=3&&az<=3)return mat;
+ }
+ const ax=Math.abs(lx),az=Math.abs(lz),base=heightAt(cx,cz);
+ if(ax<=1&&az<=1&&y===base+1&&(ax===1||az===1))return 'stone';
+ if(lx===0&&lz===0&&y===base+1)return 'water';
+ if(ax<=1&&az<=1&&y===base+2&&(ax===1||az===1))return 'wood';
+ if(lx>=9&&lx<=13&&Math.abs(lz)<=3&&y===ground+1&&(lx===9||lx===13||Math.abs(lz)===3))return 'wood';
+ return undefined;
+}
+\nfunction proceduralBlock(x, y, z) {
   if (x < WORLD_MIN || x > WORLD_MAX || z < WORLD_MIN || z > WORLD_MAX || y < WORLD_BOTTOM || y > 24) return undefined;
   const h = heightAt(x, z);
   const biome = biomeAt(x, z);
@@ -1233,13 +1256,36 @@ function updateAnimals(dt) {
 }
 
 
-// Terrain, grottes, minerais et arbres générés à la demande lors du chargement
+const ambientMobs=[];
+function makeAmbientMob(kind){
+ const g=new THREE.Group(),box=new THREE.BoxGeometry(1,1,1),color=kind==='villager'?0xb98262:kind==='iron_golem'?0xd5d1bd:kind==='cat'?0x777777:kind==='bat'?0x29252c:kind==='slime'?0x65bd45:0x40c9d5;
+ const m=new THREE.MeshLambertMaterial({color,emissive:kind==='glow_squid'?0x1688a0:0,emissiveIntensity:.9}),dark=new THREE.MeshLambertMaterial({color:0x302925});
+ const p=(x,y,z,sx,sy,sz,ma=m)=>{const o=new THREE.Mesh(box,ma);o.position.set(x,y,z);o.scale.set(sx,sy,sz);g.add(o);};
+ if(kind==='villager'||kind==='iron_golem'){p(0,.9,0,kind==='villager'?.62:.9,1,kind==='villager'?.5:.65);p(0,1.65,.12,.55,.55,.55);p(0,1.68,.4,.3,.07,.03,dark);if(kind==='iron_golem'){p(-.58,1.1,0,.18,.9,.2);p(.58,1.1,0,.18,.9,.2);}}
+ else if(kind==='cat'){p(0,.35,0,.35,.4,.7);p(0,.65,.3,.35,.35,.35);p(-.12,.95,.3,.1,.25,.1);p(.12,.95,.3,.1,.25,.1);p(.3,.45,-.4,.1,.1,.55);}
+ else if(kind==='bat'){p(0,0,0,.22,.3,.25);p(-.38,0,0,.6,.08,.4);p(.38,0,0,.6,.08,.4);}
+ else if(kind==='slime'){p(0,.35,0,.8,.7,.8);p(-.18,.48,.41,.09,.09,.04,dark);p(.18,.48,.41,.09,.09,.04,dark);}
+ else {p(0,0,0,.55,.5,.55);for(let i=0;i<4;i++){const a=i*Math.PI/2;p(Math.cos(a)*.4,0,Math.sin(a)*.4,.14,.14,.7);}}
+ return g;
+}
+function spawnAmbientMobs(){
+ const add=(kind,x,y,z,s)=>{const group=makeAmbientMob(kind);group.position.set(x,y,z);scene.add(group);ambientMobs.push({kind,group,y,phase:worldHash(x,z,s)*6});};
+ for(let x=-90;x<=90;x+=97)for(let z=-90;z<=90;z+=97){const v=villageCenterFor(x,z);if(!v)continue;const y=heightAt(v.x,v.z)+1;add('villager',v.x+3,y,v.z+3,1401);add('villager',v.x-3,y,v.z-3,1403);add('iron_golem',v.x+5,y,v.z,1405);add('cat',v.x-5,y,v.z+2,1407);}
+ let count=0;
+ for(let x=-22;x<=22&&count<10;x+=2)for(let z=-22;z<=22&&count<10;z+=3)for(let y=2;y<=6&&count<10;y++){
+  if(getBlock(x,y,z)!==undefined||getBlock(x,y+1,z)!==undefined)continue;
+  const floor=getBlock(x,y-1,z);if(!floor||!['stone','dirt'].includes(floor))continue;
+  const r=worldHash(x+y,z,1411),kind=r<.34?'bat':r<.67?'slime':'glow_squid';add(kind,x,y+.3,z,1413);count++;break;
+ }
+}
+function updateAmbientMobs(dt){for(const mob of ambientMobs){mob.phase+=dt*(mob.kind==='bat'?5:1.5);mob.group.position.y=mob.y+Math.sin(mob.phase)*(mob.kind==='bat'?.18:.025);if(mob.kind==='bat')mob.group.rotation.z=Math.sin(mob.phase*1.7)*.2;}}
+\n// Terrain, grottes, minerais et arbres générés à la demande lors du chargement
 // des chunks. La taille totale du monde n'augmente pas l'utilisation mémoire.
 
 // Chargement initial autour du point de départ (les autres chunks seront chargés à l'approche).
 const groundY = heightAt(0, 10) + 2.7;
 camera.position.set(0, groundY, 10);
-spawnAnimals();
+spawnAnimals();\nspawnAmbientMobs();
 // Oriente légèrement la vue vers le terrain pour rendre le monde visible dès le démarrage.
 camera.rotation.order = 'YXZ';
 camera.rotation.x = -0.65;
@@ -1427,7 +1473,7 @@ function update(dt) {
     stepTimer = 0;
   }
 
-  updateAnimals(dt);
+  updateAnimals(dt);\n  updateAmbientMobs(dt);
 }
 function animate() {
   requestAnimationFrame(animate);
