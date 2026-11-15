@@ -640,8 +640,6 @@ function heightAt(x, z) {
   const offsetX = (WORLD_SEED & 0xffff) / 65535 * 1000;
   const offsetZ = ((WORLD_SEED >>> 16) & 0xffff) / 65535 * 1000;
   const biome = biomeAt(x, z);
-  const villageBlock = villageBlockAt(x,y,z);
-  if (villageBlock) return villageBlock;
   const broad = smoothNoise((x + offsetX) / 34, (z + offsetZ) / 34, 11) * (biome === 'mountains' ? 10 : 7);
   const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * (biome === 'mountains' ? 6 : 4.2);
   const detail = smoothNoise((x + offsetX) / 5, (z + offsetZ) / 5, 37) * 1.8;
