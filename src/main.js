@@ -251,7 +251,10 @@ function makeBlockTexture(type, face) {
     cactus: ['#287d35', '#3e9846', '#1f682b', '#58aa55'],
     dead_bush: ['#8b6338', '#a77a45', '#6f4a2a', '#c09354'],
     suspicious_sand: ['#d9c27b', '#e8d493', '#c9b16d', '#f0dfa3'],
-    sugar_cane: ['#6cae45', '#8bc65a', '#4f8f35', '#b2d978']
+    sugar_cane: ['#6cae45', '#8bc65a', '#4f8f35', '#b2d978'],
+    flower_red: ['#4f8f2d', '#d94b45', '#f2d6b5', '#3d7626'],
+    flower_yellow: ['#4f8f2d', '#f1cf3a', '#fff0a0', '#3d7626'],
+    bee_nest: ['#b77a35', '#d5a04d', '#8d5728', '#e5bd72']
   };
   const palette = palettes[type] || palettes.stone;
   const fillNoise = (colors, count, minW = 1, maxW = 2) => {
@@ -366,6 +369,16 @@ function makeBlockTexture(type, face) {
     pixel(0,0,'#6cae45',16,16);
     for(let x=2;x<16;x+=4) pixel(x,0,'#b2d978',1,16);
     speckle(['#8bc65a','#4f8f35','#b2d978'],24,1,1);
+  } else if (type === 'flower_red' || type === 'flower_yellow') {
+    pixel(0,0,'#4f8f2d',16,16);
+    for(let y=5;y<16;y+=3) pixel(7,y,'#397b2b',2,3);
+    const petal=type==='flower_red'?'#d94b45':'#f1cf3a';
+    pixel(6,3,petal,4,4); pixel(4,5,petal,3,3); pixel(9,5,petal,3,3);
+    pixel(7,6,'#f6df78',2,2);
+  } else if (type === 'bee_nest') {
+    pixel(0,0,'#b77a35',16,16);
+    for(let y=2;y<16;y+=4){pixel(0,y,'#d5a04d',16,2);pixel(0,y+2,'#8d5728',16,1);}
+    pixel(6,10,'#38271b',4,4);
   } else if (type === 'leaves') {
     pixel(0,0,'#347d20',16,16);
     speckle(['#3f8f25','#4b9c2b','#2f701e','#58a832','#438c27','#28691c'],100,1,2);
@@ -404,6 +417,9 @@ const materials = {
   dead_bush: makeBlockMaterials('dead_bush'),
   suspicious_sand: makeBlockMaterials('suspicious_sand'),
   sugar_cane: makeBlockMaterials('sugar_cane'),
+  flower_red: makeBlockMaterials('flower_red'),
+  flower_yellow: makeBlockMaterials('flower_yellow'),
+  bee_nest: makeBlockMaterials('bee_nest'),
   // Eau moins transparente et écrivant dans le depth buffer :
   // évite les couches et les faces arrière visibles à travers les volumes d'eau.
   water: Array.from({ length: 6 }, () => new THREE.MeshLambertMaterial({
@@ -753,6 +769,25 @@ function proceduralBlock(x, y, z) {
     // La canne à sucre pousse au bord de l'eau, notamment dans les déserts.
     if (y > h && y <= h + 3 && getBlockSafeWaterEdge(x, z)) return 'sugar_cane';
   }
+  // Fleurs sauvages et nids d'abeilles des plaines, générés avec la graine.
+  if (biome === 'plains' && y > h) {
+    const fx = Math.floor((x + (WORLD_SEED % 5)) / 5) * 5 - (WORLD_SEED % 5);
+    const fz = Math.floor((z + ((WORLD_SEED >>> 9) % 5)) / 5) * 5 - ((WORLD_SEED >>> 9) % 5);
+    if (x === fx && z === fz && y === heightAt(fx,fz) + 1 && worldHash(fx,fz,981) > 0.43)
+      return worldHash(fx,fz,983) > 0.5 ? 'flower_red' : 'flower_yellow';
+  }
+  // Nids d'abeilles accrochés aux troncs de chênes des plaines.
+  if (biome === 'plains') {
+    const ox = WORLD_SEED % 6, oz = (WORLD_SEED >>> 8) % 7;
+    for (let tx = Math.floor((x-ox)/6)*6+ox-6; tx <= x+2; tx += 6) {
+      for (let tz = Math.floor((z-oz)/7)*7+oz-7; tz <= z+2; tz += 7) {
+        if (Math.abs(x-(tx+1)) > 0 || z !== tz) continue;
+        if (worldHash(tx,tz,303) <= 0.13 || worldHash(tx,tz,987) < 0.82) continue;
+        const base = heightAt(tx,tz);
+        if (y === base+3 && biomeAt(tx,tz) === 'plains') return 'bee_nest';
+      }
+    }
+  }
   // Avant-poste de pillards déserté dans les plaines : structure seule, sans pillards ni créatures hostiles.
   if (biome === 'plains') {
     const ox = WORLD_SEED % 131, oz = (WORLD_SEED >>> 8) % 131;
@@ -990,7 +1025,9 @@ function makeAnimalTexture(type, part) {
       head: ['#c9a06a', '#a77b49', '#e0bd89'],
       muzzle: ['#d4ad7b', '#b78e5e', '#e5c89a'],
       legs: ['#a77b49', '#89633d', '#c49a68']
-    }
+    },
+    horse: { body: ['#8b5634','#633b27','#b77b4b'], head: ['#8b5634','#633b27','#b77b4b'], muzzle: ['#c99b76','#a97858','#dfb795'], legs: ['#49352b','#5e4637','#342720'] },
+    donkey: { body: ['#81766b','#625950','#a69a8c'], head: ['#81766b','#625950','#a69a8c'], muzzle: ['#b5a596','#958577','#d0c2b4'], legs: ['#51483f','#6c6055','#392f29'] }
   };
   const p = palettes[type][part] || palettes[type].body;
   ctx.fillStyle = p[0];
@@ -1040,11 +1077,11 @@ function makeAnimalTexture(type, part) {
   return texture;
 }
 const animalMaterials = {};
-for (const type of ['cow', 'pig', 'sheep', 'chicken', 'rabbit', 'camel']) {
+for (const type of ['cow', 'pig', 'sheep', 'chicken', 'rabbit', 'camel', 'horse', 'donkey']) {
   animalMaterials[type] = {};
   const parts = type === 'cow' ? ['body','head','muzzle','legs'] :
     type === 'pig' ? ['body','head','muzzle','legs'] :
-    type === 'sheep' ? ['body','head','muzzle','legs'] : ['body','head','wing','legs'];
+    type === 'sheep' || type === 'horse' || type === 'donkey' ? ['body','head','muzzle','legs'] : ['body','head','wing','legs'];
   for (const part of parts) {
     animalMaterials[type][part] = new THREE.MeshLambertMaterial({ map: makeAnimalTexture(type, part) });
   }
@@ -1130,6 +1167,22 @@ function makeAnimal(type) {
     animalPart(group, m.eye, -0.16, 0.84, 0.58, 0.06, 0.06, 0.035);
     animalPart(group, m.eye, 0.16, 0.84, 0.58, 0.06, 0.06, 0.035);
     animalPart(group, m.body, 0, 0.50, -0.42, 0.22, 0.22, 0.22);
+  } else if (type === 'horse' || type === 'donkey') {
+    // Silhouette équine cubique : corps allongé, encolure inclinée, tête et crinière.
+    animalPart(group, m.body, 0, 1.12, -0.08, 0.86, 0.88, 1.55);
+    animalPart(group, m.body, 0, 1.58, 0.48, 0.38, 0.92, 0.42);
+    animalPart(group, m.head, 0, 1.98, 0.72, 0.48, 0.54, 0.55);
+    animalPart(group, m.muzzle, 0, 1.78, 1.02, 0.40, 0.27, 0.28);
+    animalPart(group, m.dark, 0, 1.78, 0.45, 0.18, 0.72, 0.18);
+    animalPart(group, m.dark, 0, 1.37, -0.91, 0.12, 0.58, 0.12);
+    if (type === 'donkey') {
+      animalPart(group, m.head, -0.17, 2.48, 0.76, 0.13, 0.55, 0.15);
+      animalPart(group, m.head, 0.17, 2.48, 0.76, 0.13, 0.55, 0.15);
+    } else {
+      animalPart(group, m.head, -0.17, 2.30, 0.72, 0.12, 0.32, 0.12);
+      animalPart(group, m.head, 0.17, 2.30, 0.72, 0.12, 0.32, 0.12);
+    }
+    addAnimalEyes(group, m.eye, 0, 2.05, 0.98, 0.19, 0.06);
   } else if (type === 'camel') {
     animalPart(group, m.body, 0, 1.18, 0, 0.92, 1.05, 1.75);
     animalPart(group, m.body, 0, 1.82, -0.28, 0.44, 0.42, 0.42);
@@ -1149,10 +1202,10 @@ function makeAnimal(type) {
     animalPart(group, m.wattle, 0, 0.91, 0.53, 0.1, 0.16, 0.08);
     addAnimalEyes(group, m.eye, 0, 1.22, 0.5, 0.14, 0.055);
   }
-  const legX = type === 'chicken' ? 0.12 : (type === 'pig' ? 0.31 : type === 'camel' ? 0.29 : type === 'rabbit' ? 0.17 : 0.36);
-  const legZ = type === 'chicken' ? 0 : type === 'camel' ? 0.62 : type === 'rabbit' ? 0.25 : 0.43;
-  const legW = type === 'chicken' ? 0.09 : type === 'camel' ? 0.14 : type === 'rabbit' ? 0.12 : 0.17;
-  const legH = type === 'chicken' ? 0.38 : type === 'camel' ? 1.05 : type === 'rabbit' ? 0.30 : 0.62;
+  const legX = type === 'chicken' ? 0.12 : (type === 'pig' ? 0.31 : type === 'camel' ? 0.29 : type === 'rabbit' ? 0.17 : (type === 'horse' || type === 'donkey') ? 0.27 : 0.36);
+  const legZ = type === 'chicken' ? 0 : type === 'camel' ? 0.62 : type === 'rabbit' ? 0.25 : (type === 'horse' || type === 'donkey') ? 0.55 : 0.43;
+  const legW = type === 'chicken' ? 0.09 : type === 'camel' ? 0.14 : type === 'rabbit' ? 0.12 : (type === 'horse' || type === 'donkey') ? 0.14 : 0.17;
+  const legH = type === 'chicken' ? 0.38 : type === 'camel' ? 1.05 : type === 'rabbit' ? 0.30 : (type === 'horse' || type === 'donkey') ? 0.82 : 0.62;
   const legXs = type === 'chicken' ? [0] : [-legX, legX];
   for (const x of legXs) {
     // Les deux pattes de la poule sont alignées sous l'axe central du corps,
@@ -1193,7 +1246,7 @@ function animalGroundAt(x, z) {
   return top + 0.5;
 }
 function spawnAnimals() {
-  const types = ['cow', 'pig', 'sheep', 'chicken'];
+  const types = ['cow', 'pig', 'sheep', 'chicken', 'horse', 'donkey'];
   // Les premiers animaux sont déterminés par la graine et apparaissent près du départ.
   for (let i = 0; i < MAX_ANIMALS; i++) {
     for (let attempt = 0; attempt < 40; attempt++) {
@@ -1203,9 +1256,10 @@ function spawnAnimals() {
       if (ground === null) continue;
       if (animals.some(animal => Math.hypot(animal.group.position.x - x, animal.group.position.z - z) < 8)) continue;
       const biome = biomeAt(x, z);
-      const type = biome === 'desert'
-        ? 'rabbit'
-        : types[Math.floor(worldHash(i, attempt, 811) * types.length)];
+      const roll = worldHash(i, attempt, 811);
+      const type = biome === 'desert' ? 'rabbit' :
+        biome === 'plains' && roll > 0.72 ? (roll > 0.86 ? 'donkey' : 'horse') :
+        types[Math.floor(roll * 4)];
       const group = makeAnimal(type);
       group.position.set(x, ground, z);
       group.rotation.y = worldHash(i, attempt, 813) * Math.PI * 2;
