@@ -823,15 +823,25 @@ function proceduralBlock(x, y, z) {
       return flowerRoll < 0.2 ? 'flower_red' : flowerRoll < 0.4 ? 'flower_yellow' : flowerRoll < 0.6 ? 'flower_white' : flowerRoll < 0.8 ? 'flower_blue' : 'flower_pink';
     }
   }
-  // Nids d'abeilles accrochés aux troncs de chênes des plaines.
+  // Nids d'abeilles plus rares, placés contre le flanc du tronc.
+  // Le nid n'apparaît que si l'arbre correspondant existe réellement.
   if (biome === 'plains') {
     const ox = WORLD_SEED % 6, oz = (WORLD_SEED >>> 8) % 7;
     for (let tx = Math.floor((x-ox)/6)*6+ox-6; tx <= x+2; tx += 6) {
       for (let tz = Math.floor((z-oz)/7)*7+oz-7; tz <= z+2; tz += 7) {
-        if (Math.abs(x-(tx+1)) > 0 || z !== tz) continue;
-        if (worldHash(tx,tz,303) <= 0.13 || worldHash(tx,tz,987) < 0.82) continue;
+        if (x !== tx+1 || z !== tz) continue;
+        if (worldHash(tx,tz,303) > 0.13 || worldHash(tx,tz,987) < 0.91) continue;
         const base = heightAt(tx,tz);
-        if (y === base+3 && biomeAt(tx,tz) === 'plains') return 'bee_nest';
+        if (base >= 14 || biomeAt(tx,tz) !== 'plains') continue;
+        const slope = Math.max(
+          Math.abs(base - heightAt(tx+1,tz)),
+          Math.abs(base - heightAt(tx-1,tz)),
+          Math.abs(base - heightAt(tx,tz+1)),
+          Math.abs(base - heightAt(tx,tz-1))
+        );
+        if (slope > 2) continue;
+        // Le centre du nid est juste à côté du tronc, à hauteur de son bloc central.
+        if (y === base+2) return 'bee_nest';
       }
     }
   }
@@ -940,7 +950,7 @@ function rebuildChunk(cx, cz) {
       const scale = 0.92 + worldHash(x, z, 991) * 0.22;
       const rotation = worldHash(x, z, 992) * Math.PI;
       for (let side = 0; side < 2; side++) {
-        dummy.position.set(x, y + 0.5 + 0.36 * scale, z);
+        dummy.position.set(x, y - 0.5 + 0.36 * scale, z);
         dummy.rotation.set(0, rotation + side * Math.PI / 2, 0);
         dummy.scale.set(scale, scale, scale);
         dummy.updateMatrix();
