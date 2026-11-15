@@ -250,7 +250,8 @@ function makeBlockTexture(type, face) {
     diamond: ['#7d7d7d', '#36c9c7', '#8af1e8', '#168f9a'],
     cactus: ['#287d35', '#3e9846', '#1f682b', '#58aa55'],
     dead_bush: ['#8b6338', '#a77a45', '#6f4a2a', '#c09354'],
-    suspicious_sand: ['#d9c27b', '#e8d493', '#c9b16d', '#f0dfa3']
+    suspicious_sand: ['#d9c27b', '#e8d493', '#c9b16d', '#f0dfa3'],
+    sugar_cane: ['#6cae45', '#8bc65a', '#4f8f35', '#b2d978']
   };
   const palette = palettes[type] || palettes.stone;
   const fillNoise = (colors, count, minW = 1, maxW = 2) => {
@@ -361,6 +362,10 @@ function makeBlockTexture(type, face) {
   } else if (type === 'suspicious_sand') {
     pixel(0,0,'#d9c27b',16,16);
     speckle(['#e8d493','#c9b16d','#f0dfa3','#bda568'],42,1,2);
+  } else if (type === 'sugar_cane') {
+    pixel(0,0,'#6cae45',16,16);
+    for(let x=2;x<16;x+=4) pixel(x,0,'#b2d978',1,16);
+    speckle(['#8bc65a','#4f8f35','#b2d978'],24,1,1);
   } else if (type === 'leaves') {
     pixel(0,0,'#347d20',16,16);
     speckle(['#3f8f25','#4b9c2b','#2f701e','#58a832','#438c27','#28691c'],100,1,2);
@@ -397,7 +402,11 @@ const materials = {
   diamond: makeBlockMaterials('diamond'),
   cactus: makeBlockMaterials('cactus'),
   dead_bush: makeBlockMaterials('dead_bush'),
-  suspicious_sand: makeBlockMaterials('suspicious_sand')
+  suspicious_sand: makeBlockMaterials('suspicious_sand'),
+  sugar_cane: makeBlockMaterials('sugar_cane'),
+  water: Array.from({ length: 6 }, () => new THREE.MeshLambertMaterial({
+    color: 0x398bd0, transparent: true, opacity: 0.68, depthWrite: false
+  }))
 };
 
 const blockNames = Object.keys(materials);
@@ -612,6 +621,17 @@ function biomeAt(x, z) {
   if (humidity > 0.20) return 'forest';
   return 'plains';
 }
+const SEA_LEVEL = 8;
+// Océans larges, rivières sinueuses et petits lacs : entièrement déterminés par la graine.
+function waterBodyAt(x, z) {
+  const ocean = smoothNoise(x / 330, z / 330, 421) > 0.48;
+  const riverField = smoothNoise(x / 115, z / 115, 427);
+  const river = Math.abs(riverField) < 0.045 &&
+    smoothNoise(x / 250, z / 250, 431) > -0.28;
+  const lakeField = smoothNoise(x / 74, z / 74, 433);
+  const lake = lakeField > 0.69 && smoothNoise(x / 150, z / 150, 439) < 0.35;
+  return ocean || river || lake;
+}
 function heightAt(x, z) {
   // Relief et altitude varient selon le biome, sans casser la génération par chunks.
   const offsetX = (WORLD_SEED & 0xffff) / 65535 * 1000;
@@ -621,7 +641,9 @@ function heightAt(x, z) {
   const hills = smoothNoise((x + offsetX) / 14, (z + offsetZ) / 14, 23) * (biome === 'mountains' ? 6 : 4.2);
   const detail = smoothNoise((x + offsetX) / 5, (z + offsetZ) / 5, 37) * 1.8;
   const uplift = biome === 'mountains' ? 7 : biome === 'desert' ? -1 : 0;
-  return THREE.MathUtils.clamp(Math.floor(6 + uplift + broad + hills + detail), 1, 22);
+  const landHeight = THREE.MathUtils.clamp(Math.floor(6 + uplift + broad + hills + detail), 1, 22);
+  // Fond abaissé sous le niveau marin pour former de vrais bassins remplis d'eau.
+  return waterBodyAt(x, z) ? Math.min(landHeight, SEA_LEVEL - 2) : landHeight;
 }
 function setBlockData(x, y, z, type) {
   blocks.set(keyOf(x, y, z), type);
@@ -632,6 +654,7 @@ function proceduralBlock(x, y, z) {
   const h = heightAt(x, z);
   const biome = biomeAt(x, z);
   let type;
+  if (waterBodyAt(x, z) && y > h && y <= SEA_LEVEL) return 'water';
   if (y <= h) {
     if (biome === 'desert') type = y === h ? 'sand' : y >= h - 3 ? 'sand' : y >= h - 6 ? 'sandstone' : 'stone';
     else if (biome === 'snowy') type = y === h ? 'snow' : y >= h - 2 ? 'dirt' : 'stone';
@@ -668,6 +691,34 @@ function proceduralBlock(x, y, z) {
     if (x === bushX && z === bushZ && y === heightAt(bushX, bushZ) + 1 &&
         worldHash(bushX, bushZ, 907) > 0.68) return 'dead_bush';
   }
+  // Structures désertiques : pyramides compactes et puits, générés à partir de la graine.
+  if (biome === 'desert') {
+    const px = Math.floor((x + (WORLD_SEED % 37)) / 37) * 37 - (WORLD_SEED % 37);
+    const pz = Math.floor((z + ((WORLD_SEED >>> 8) % 37)) / 37) * 37 - ((WORLD_SEED >>> 8) % 37);
+    if (biomeAt(px, pz) === 'desert' && worldHash(px, pz, 951) > 0.84) {
+      const dx = Math.abs(x - px), dz = Math.abs(z - pz);
+      const base = heightAt(px, pz);
+      const layer = y - base;
+      // Pyramide à gradins 9 x 9, avec intérieur creux et entrée au sud.
+      if (layer >= 1 && layer <= 4 && dx <= 4 - (layer - 1) && dz <= 4 - (layer - 1)) {
+        const hollow = dx <= 1 && dz <= 1 && layer < 4;
+        if (!hollow) return 'sandstone';
+      }
+      // Sable suspect autour de l'entrée, en petite quantité.
+      if (layer === 1 && dx === 0 && dz === 5 && worldHash(px, pz, 953) > 0.45) return 'suspicious_sand';
+    }
+    const wx = Math.floor((x + (WORLD_SEED % 29)) / 29) * 29 - (WORLD_SEED % 29);
+    const wz = Math.floor((z + ((WORLD_SEED >>> 16) % 29)) / 29) * 29 - ((WORLD_SEED >>> 16) % 29);
+    if (biomeAt(wx, wz) === 'desert' && worldHash(wx, wz, 957) > 0.91) {
+      const dx = Math.abs(x - wx), dz = Math.abs(z - wz);
+      const base = heightAt(wx, wz);
+      if (y === base + 1 && dx <= 2 && dz <= 2 && (dx === 2 || dz === 2)) return 'sandstone';
+      if (y === base + 2 && dx === 0 && dz === 0) return 'water';
+      if (y === base + 1 && dx === 0 && dz === 0) return 'sandstone';
+    }
+    // La canne à sucre pousse au bord de l'eau, notamment dans les déserts.
+    if (y > h && y <= h + 3 && getBlockSafeWaterEdge(x, z)) return 'sugar_cane';
+  }
   if (!type) {
     const ox = WORLD_SEED % 6;
     const oz = (WORLD_SEED >>> 8) % 7;
@@ -690,6 +741,11 @@ function proceduralBlock(x, y, z) {
     }
   }
   return type;
+}
+function getBlockSafeWaterEdge(x, z) {
+  const adjacent = [[1,0],[-1,0],[0,1],[0,-1]];
+  return adjacent.some(([dx,dz]) => waterBodyAt(x + dx, z + dz)) &&
+    !waterBodyAt(x, z) && worldHash(x, z, 961) > 0.88;
 }
 function getBlock(x, y, z) {
   const key = keyOf(x, y, z);
