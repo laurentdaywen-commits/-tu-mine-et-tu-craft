@@ -1044,18 +1044,29 @@ function removeBlockAt(x, y, z) {
 }
 
 // Physique voxel : le sol réel dépend des blocs encore présents, pas du relief théorique.
+function isPlayerSolidBlock(type) {
+  if (!type || type === 'water' || type.startsWith('flower_') ||
+      type === 'tall_grass' || type === 'dead_bush' || type === 'sugar_cane') return false;
+  return true;
+}
 function highestSolidBlock(x, z, atOrBelow = 24) {
-  for (let y = Math.min(24, Math.floor(atOrBelow)); y >= 0; y--) {
-    if (getBlock(x, y, z)) return y;
+  // Inclure les couches négatives : les fonds marins sont générés sous le niveau 0.
+  for (let y = Math.min(24, Math.floor(atOrBelow)); y >= WORLD_BOTTOM; y--) {
+    if (isPlayerSolidBlock(getBlock(x, y, z))) return y;
   }
-  return -1;
+  return WORLD_BOTTOM - 1;
 }
 function canOccupyPlayer(x, z, feetY) {
   const bodyBottom = Math.floor(feetY + 0.05);
   const bodyTop = Math.floor(feetY + 1.7);
-  const px = Math.round(x), pz = Math.round(z);
-  for (let y = bodyBottom; y <= bodyTop; y++) {
-    if (getBlock(px, y, pz)) return false;
+  // Vérifier le centre et les quatre bords de la hitbox, pour éviter les passages
+  // à travers le terrain lorsque le déplacement traverse une limite de colonne.
+  const samples = [[x,z],[x-0.28,z],[x+0.28,z],[x,z-0.28],[x,z+0.28]];
+  for (const [sx,sz] of samples) {
+    const px = Math.round(sx), pz = Math.round(sz);
+    for (let y = bodyBottom; y <= bodyTop; y++) {
+      if (isPlayerSolidBlock(getBlock(px, y, pz))) return false;
+    }
   }
   return true;
 }
@@ -1617,7 +1628,7 @@ function update(dt) {
   const groundZ = Math.round(camera.position.z);
   const feetY = camera.position.y - 1.65;
   const supportY = highestSolidBlock(groundX, groundZ, Math.floor(feetY + 0.08));
-  const floor = supportY >= 0 ? supportY + 2.65 : -Infinity;
+  const floor = supportY >= WORLD_BOTTOM ? supportY + 2.65 : -Infinity;
   if (camera.position.y < floor) {
     camera.position.y = floor;
     verticalVelocity = 0;
